@@ -4,6 +4,7 @@ import com.secondhand.authservice.dto.request.LoginRequest;
 import com.secondhand.authservice.dto.request.RegisterRequest;
 import com.secondhand.authservice.dto.response.AuthResponse;
 import com.secondhand.authservice.dto.response.MessageResponse;
+import com.secondhand.authservice.dto.response.UserInfoResponse;
 import com.secondhand.authservice.exception.BadRequestException;
 import com.secondhand.authservice.model.User;
 import com.secondhand.authservice.model.UserProfile;
@@ -35,16 +36,12 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse login(LoginRequest request) {
 
-        Authentication authentication =
-                authenticationManager.authenticate(
-                        new UsernamePasswordAuthenticationToken(
-                                request.getEmail(),
-                                request.getPassword()
-                        )
-                );
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getEmail(),
+                        request.getPassword()));
 
-        UserDetails userDetails =
-                (UserDetails) authentication.getPrincipal();
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
 
         String token = jwtUtils.generateToken(userDetails);
 
@@ -94,5 +91,17 @@ public class AuthServiceImpl implements AuthService {
 
         return MessageResponse.success("Registration successful! Please login to continue.");
     }
-}
 
+    @Override
+    public UserInfoResponse getCurrentUser(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+
+        return new UserInfoResponse(
+                user.getUserId(),
+                user.getEmail(),
+                user.getPhoneNumber(),
+                user.getRole().name(),
+                user.isStatus());
+    }
+}

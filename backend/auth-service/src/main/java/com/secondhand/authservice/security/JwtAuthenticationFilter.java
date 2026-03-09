@@ -19,53 +19,47 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtUtils jwtUtils;
-    private final AuthUserDetailsService userDetailsService;
+        private final JwtUtils jwtUtils;
+        private final AuthUserDetailsService userDetailsService;
 
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getServletPath();
-        String uri = request.getRequestURI();
-        // Skip filter for auth endpoints (both direct and through gateway)
-        return path.startsWith("/api/auth/") || uri.contains("/api/auth/");
-    }
-
-    @Override
-    protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain
-    ) throws ServletException, IOException {
-
-        String header = request.getHeader("Authorization");
-
-        if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7);
-
-            if (jwtUtils.validateToken(token)) {
-                String email = jwtUtils.extractEmail(token);
-
-                UserDetails userDetails =
-                        userDetailsService.loadUserByUsername(email);
-
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities()
-                        );
-
-                authentication.setDetails(
-                        new WebAuthenticationDetailsSource()
-                                .buildDetails(request)
-                );
-
-                SecurityContextHolder.getContext()
-                        .setAuthentication(authentication);
-            }
+        @Override
+        protected boolean shouldNotFilter(HttpServletRequest request) {
+                String path = request.getServletPath();
+                String uri = request.getRequestURI();
+                // Skip filter for auth endpoints (both direct and through gateway)
+                return path.startsWith("/api/auth/login") || uri.contains("/api/auth/register");
         }
 
-        filterChain.doFilter(request, response);
-    }
-}
+        @Override
+        protected void doFilterInternal(
+                        HttpServletRequest request,
+                        HttpServletResponse response,
+                        FilterChain filterChain) throws ServletException, IOException {
 
+                String header = request.getHeader("Authorization");
+
+                if (header != null && header.startsWith("Bearer ")) {
+                        String token = header.substring(7);
+
+                        if (jwtUtils.validateToken(token)) {
+                                String email = jwtUtils.extractEmail(token);
+
+                                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+
+                                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                                userDetails,
+                                                null,
+                                                userDetails.getAuthorities());
+
+                                authentication.setDetails(
+                                                new WebAuthenticationDetailsSource()
+                                                                .buildDetails(request));
+
+                                SecurityContextHolder.getContext()
+                                                .setAuthentication(authentication);
+                        }
+                }
+
+                filterChain.doFilter(request, response);
+        }
+}
