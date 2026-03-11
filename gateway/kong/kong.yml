@@ -8,3 +8,25 @@ services:
         paths:
           - /auth
         strip_path: true
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 60
+          hour: 1000
+          policy: redis
+          redis_host: redis
+          redis_port: 6379
+  - name: core-service
+    url: http://core-service:8082
+    routes:
+      - name: core-route
+        paths:
+          - /core
+        strip_path: true
+  - name: order-service
+    url: http://order-service:8083
+    routes:
+      - name: order-route
+        paths:
+          - /order
+        strip_path: true

@@ -18,6 +18,7 @@ services:
       POSTGRES_DB: secondhand_auth_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./backend/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - secondhand
     healthcheck:
