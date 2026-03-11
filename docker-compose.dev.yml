@@ -90,6 +90,78 @@ services:
       timeout: 5s
       retries: 5
 
+  # =========================
+  # AUTH SERVICE (dev mode)
+  # =========================
+  auth-service:
+    build:
+      context: ./backend/auth-service
+      dockerfile: Dockerfile.dev
+    container_name: ktpm-auth-service
+    volumes:
+      - ./backend/auth-service:/app          # mount toàn bộ source vào container
+      - maven-repo:/root/.m2                 # cache Maven deps dùng chung
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://ktpm-postgres:5432/secondhand_auth_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - secondhand
+    restart: unless-stopped
+
+  # =========================
+  # CORE SERVICE (dev mode)
+  # =========================
+  core-service:
+    build:
+      context: ./backend/core-service
+      dockerfile: Dockerfile.dev
+    container_name: ktpm-core-service
+    volumes:
+      - ./backend/core-service:/app
+      - maven-repo:/root/.m2
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://ktpm-postgres:5432/secondhand_core_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - secondhand
+    restart: unless-stopped
+
+  # =========================
+  # ORDER SERVICE (dev mode)
+  # =========================
+  order-service:
+    build:
+      context: ./backend/order-service
+      dockerfile: Dockerfile.dev
+    container_name: ktpm-order-service
+    volumes:
+      - ./backend/order-service:/app
+      - maven-repo:/root/.m2
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://ktpm-postgres:5432/secondhand_order_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - secondhand
+    restart: unless-stopped
+
 networks:
   secondhand:
     driver: bridge
@@ -99,3 +171,4 @@ volumes:
   redis_data:
   mongodb_data:
   rabbitmq_data:
+  maven-repo:          # shared Maven cache — tải deps 1 lần, tất cả service dùng chung

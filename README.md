@@ -132,3 +132,10 @@ docker-compose exec redis redis-cli
 1. **Lần đầu chạy**: Cần thời gian pull images và khởi tạo databases
 2. **Xóa data**: `docker-compose down -v` sẽ **XÓA TOÀN BỘ DATA**
 3. **Dev mode**: Dùng `docker-compose.dev.yml` + chạy service local để code nhanh hơn
+
+
+# Lần đầu (build image + download deps):
+docker compose -f docker-compose.dev.yml up --build
+
+# Các lần sau:
+docker compose -f docker-compose.dev.yml up

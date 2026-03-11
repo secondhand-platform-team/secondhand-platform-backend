@@ -39,11 +39,12 @@ services:
   # AUTH SERVICE
   # =========================
   auth-service:
-    build:
-      context: ./backend/auth-service
-      dockerfile: Dockerfile
+    image: eclipse-temurin:21-jdk
     container_name: ktpm-auth-service
-    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./backend/auth-service:/app
+    command: ./mvnw spring-boot:run
     ports:
       - "8081:8081"
     environment:
@@ -66,21 +67,16 @@ services:
         condition: service_healthy
     networks:
       - secondhand
-    healthcheck:
-      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8081/actuator/health || exit 1" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    # =========================
+  # =========================
   # CORE SERVICE
   # =========================
   core-service:
-    build:
-      context: ./backend/core-service
-      dockerfile: Dockerfile
+    image: eclipse-temurin:21-jdk
     container_name: ktpm-core-service
-    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./backend/core-service:/app
+    command: ./mvnw spring-boot:run
     ports:
       - "8082:8082"
     environment:
@@ -88,10 +84,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/secondhand_core_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
-
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: admin
@@ -107,18 +101,13 @@ services:
         condition: service_healthy
     networks:
       - secondhand
-    healthcheck:
-      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8082/actuator/health || exit 1" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
   order-service:
-    build:
-      context: ./backend/order-service
-      dockerfile: Dockerfile
+    image: eclipse-temurin:21-jdk
     container_name: ktpm-order-service
-    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./backend/order-service:/app
+    command: ./mvnw spring-boot:run
     ports:
       - "8083:8083"
     environment:
@@ -126,10 +115,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/secondhand_order_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
-
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: admin
@@ -145,12 +132,6 @@ services:
         condition: service_healthy
     networks:
       - secondhand
-    healthcheck:
-      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8083/actuator/health || exit 1" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   # =========================
   # POSTGRESQL (DEV / MOCK DB)

@@ -1,28 +1,30 @@
-# Stage 1: Build the application
+# Stage 1: Build application
 FROM eclipse-temurin:21-jdk AS build
 
 WORKDIR /app
 
-# Copy Maven wrapper and pom.xml
+# Copy Maven wrapper & config
 COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .
 
-# Download dependencies (cached layer)
-RUN chmod +x mvnw && ./mvnw dependency:go-offline -B
+# Download dependencies (cache layer)
+RUN chmod +x mvnw
+RUN ./mvnw dependency:go-offline -B
 
-# Copy source code and build
-COPY src src
-RUN ./mvnw package -Dmaven.test.skip=true -B
+# Copy source code
+COPY src ./src
 
-# Stage 2: Run the application
+# Build jar
+RUN ./mvnw package -DskipTests
+
+# Stage 2: Runtime image
 FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-# Copy the built JAR from the build stage
 COPY --from=build /app/target/*.jar app.jar
 
 EXPOSE 8083
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java","-jar","app.jar"]
