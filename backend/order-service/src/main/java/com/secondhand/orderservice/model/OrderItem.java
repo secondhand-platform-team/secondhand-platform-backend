@@ -17,6 +17,8 @@ public class OrderItem {
 
     private String itemId;
 
+    private String itemName;
+
     private String sellerId;
 
     private Double price;

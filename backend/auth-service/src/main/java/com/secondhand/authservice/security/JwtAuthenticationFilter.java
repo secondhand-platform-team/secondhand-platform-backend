@@ -25,9 +25,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         @Override
         protected boolean shouldNotFilter(HttpServletRequest request) {
                 String path = request.getServletPath();
-                String uri = request.getRequestURI();
-                // Skip filter for auth endpoints (both direct and through gateway)
-                return path.startsWith("/api/auth/login") || uri.contains("/api/auth/register");
+                // Skip filter for public auth endpoints
+                return path.startsWith("/api/auth/login")
+                                || path.startsWith("/api/auth/register")
+                                || path.startsWith("/api/login")
+                                || path.startsWith("/api/register");
         }
 
         @Override

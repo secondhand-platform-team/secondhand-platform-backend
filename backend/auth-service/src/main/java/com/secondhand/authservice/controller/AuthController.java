@@ -5,6 +5,7 @@ import com.secondhand.authservice.dto.request.RegisterRequest;
 import com.secondhand.authservice.dto.response.AuthResponse;
 import com.secondhand.authservice.dto.response.MessageResponse;
 import com.secondhand.authservice.dto.response.UserInfoResponse;
+import com.secondhand.authservice.model.enums.Role;
 import com.secondhand.authservice.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,25 +16,41 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class AuthController {
 
         private final AuthService authService;
 
-        @PostMapping("/login")
-        public ResponseEntity<AuthResponse> login(
+        @PostMapping("/login/user")
+        public ResponseEntity<AuthResponse> loginUser(
                         @RequestBody LoginRequest request) {
                 return ResponseEntity.ok(
-                                authService.login(request));
+                                authService.loginByRole(request, Role.USER));
         }
 
-        @PostMapping("/register")
-        public ResponseEntity<MessageResponse> register(
+        @PostMapping("/login/admin")
+        public ResponseEntity<AuthResponse> loginAdmin(
+                        @RequestBody LoginRequest request) {
+                return ResponseEntity.ok(
+                                authService.loginByRole(request, Role.ADMIN));
+        }
+
+
+        @PostMapping("/register/user")
+        public ResponseEntity<MessageResponse> registerUser(
                         @Valid @RequestBody RegisterRequest request) {
                 return ResponseEntity
                                 .status(HttpStatus.CREATED)
-                                .body(authService.register(request));
+                                .body(authService.registerUser(request));
+        }
+
+        @PostMapping("/register/admin")
+        public ResponseEntity<MessageResponse> registerAdmin(
+                        @Valid @RequestBody RegisterRequest request) {
+                return ResponseEntity
+                                .status(HttpStatus.CREATED)
+                                .body(authService.registerAdmin(request));
         }
 
         @GetMapping("/me")

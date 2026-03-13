@@ -57,21 +57,25 @@ docker-compose up --build -d
 
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
-| POST | `/api/auth/register` | Đăng ký |
-| POST | `/api/auth/login` | Đăng nhập |
+| POST | `/api/auth/register/user` | Đăng ký user (tự tạo cart ở order-service) |
+| POST | `/api/auth/register/admin` | Đăng ký admin |
+| POST | `/api/auth/login/user` | Đăng nhập user |
+| POST | `/api/auth/login/admin` | Đăng nhập admin |
 
 ### Qua Kong Gateway (Port 8000)
 
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
-| POST | `/auth/api/auth/register` | Đăng ký |
-| POST | `/auth/api/auth/login` | Đăng nhập |
+| POST | `/auth/api/auth/register/user` | Đăng ký user |
+| POST | `/auth/api/auth/register/admin` | Đăng ký admin |
+| POST | `/auth/api/auth/login/user` | Đăng nhập user |
+| POST | `/auth/api/auth/login/admin` | Đăng nhập admin |
 
 ### Ví dụ Request
 
-**Register:**
+**Register User:**
 ```json
-POST /api/auth/register
+POST /api/auth/register/user
 {
     "fullName": "Nguyễn Văn A",
     "email": "nguyenvana@gmail.com",
@@ -81,11 +85,20 @@ POST /api/auth/register
 }
 ```
 
-**Login:**
+**Login User:**
 ```json
-POST /api/auth/login
+POST /api/auth/login/user
 {
     "email": "nguyenvana@gmail.com",
+    "password": "123456"
+}
+```
+
+**Login Admin:**
+```json
+POST /api/auth/login/admin
+{
+    "email": "admin@gmail.com",
     "password": "123456"
 }
 ```
@@ -133,9 +146,10 @@ docker-compose exec redis redis-cli
 2. **Xóa data**: `docker-compose down -v` sẽ **XÓA TOÀN BỘ DATA**
 3. **Dev mode**: Dùng `docker-compose.dev.yml` + chạy service local để code nhanh hơn
 
-
+# Để tự động rebuild docker khi sửa code thì luôn chạy:
 # Lần đầu (build image + download deps):
 docker compose -f docker-compose.dev.yml up --build
 
 # Các lần sau:
 docker compose -f docker-compose.dev.yml up
+

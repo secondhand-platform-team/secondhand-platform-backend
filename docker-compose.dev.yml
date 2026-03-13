@@ -107,6 +107,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://ktpm-postgres:5432/secondhand_auth_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      ORDER_SERVICE_BASE_URL: http://order-service:8083
     depends_on:
       postgres:
         condition: service_healthy

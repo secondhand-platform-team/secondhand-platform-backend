@@ -13,6 +13,11 @@ import com.secondhand.authservice.repository.UserRepository;
 import com.secondhand.authservice.service.AuthService;
 import com.secondhand.authservice.utils.JwtUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -20,8 +25,11 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -32,14 +40,30 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
+    private final RestTemplate restTemplate;
+
+    @Value("${order.service.base-url}")
+    private String orderServiceBaseUrl;
 
     @Override
     public AuthResponse login(LoginRequest request) {
+        return loginByRole(request, Role.USER);
+    }
+
+    @Override
+    public AuthResponse loginByRole(LoginRequest request, Role requiredRole) {
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getEmail(),
                         request.getPassword()));
+
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new BadRequestException("User not found"));
+
+        if (user.getRole() != requiredRole) {
+            throw new BadRequestException("Account does not have permission to login here");
+        }
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
 
@@ -51,6 +75,25 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public MessageResponse register(RegisterRequest request) {
+        return registerUser(request);
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse registerUser(RegisterRequest request) {
+        User user = registerWithRole(request, Role.USER);
+        createCartForUser(user.getUserId());
+        return MessageResponse.success("User registration successful! Please login to continue.");
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse registerAdmin(RegisterRequest request) {
+        registerWithRole(request, Role.ADMIN);
+        return MessageResponse.success("Admin registration successful! Please login to continue.");
+    }
+
+    private User registerWithRole(RegisterRequest request, Role role) {
         // Validate password confirmation
         if (!request.getPassword().equals(request.getConfirmPassword())) {
             throw new BadRequestException("Password and confirm password do not match");
@@ -72,7 +115,7 @@ public class AuthServiceImpl implements AuthService {
                 .email(request.getEmail())
                 .phoneNumber(request.getPhoneNumber())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(Role.USER)
+            .role(role)
                 .status(true)
                 .createdAt(LocalDate.now())
                 .updatedAt(LocalDate.now())
@@ -87,9 +130,25 @@ public class AuthServiceImpl implements AuthService {
         user.setUserProfile(userProfile);
 
         // Save user (cascades to user profile)
-        userRepository.save(user);
+        return userRepository.save(user);
+    }
 
-        return MessageResponse.success("Registration successful! Please login to continue.");
+    private void createCartForUser(String userId) {
+        String endpoint = orderServiceBaseUrl + "/api/internal/carts";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<Map<String, String>> requestEntity =
+                new HttpEntity<>(Map.of("userId", userId), headers);
+
+        try {
+            ResponseEntity<Void> response = restTemplate.postForEntity(endpoint, requestEntity, Void.class);
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new BadRequestException("Create cart failed at order-service");
+            }
+        } catch (RestClientException exception) {
+            throw new BadRequestException("Cannot create cart for user", exception);
+        }
     }
 
     @Override
