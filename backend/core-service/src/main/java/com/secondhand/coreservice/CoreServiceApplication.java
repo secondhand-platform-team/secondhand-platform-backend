@@ -7,8 +7,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class CoreServiceApplication {
 
     public static void main(String[] args) {
+        System.out.println("VẬy là xong rồi sao?");
         SpringApplication.run(CoreServiceApplication.class, args);
-        System.out.println("Ngon louoon");
+        System.out.println("hahahhahaahah");
     }
 
 }

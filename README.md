@@ -15,39 +15,50 @@ Hệ thống backend cho nền tảng mua bán đồ cũ, sử dụng kiến tr�
 
 ---
 
-## �️ Development Workflow
+## ⚙️ Development Workflow
 
 ### Chế độ Development (Khuyến nghị)
 
-Chạy databases bằng Docker, services chạy local với DevTools:
+Mục tiêu: chạy backend hoàn toàn bằng Docker và tự restart service khi sửa code.
+
+#### Yêu cầu
+
+- Docker Desktop + Docker Compose v2.22+
+- Chạy lệnh tại thư mục `secondhand-platform-backend`
+
+#### Lần đầu sau khi clone
 
 ```bash
-# Bước 1: Chạy databases
-docker-compose -f docker-compose.dev.yml up -d
+# Build image + start containers
+docker compose -f docker-compose.dev.yml up -d --build
 
-# Bước 2: Chạy auth-service từ IDE hoặc terminal
-cd backend/auth-service
-./mvnw spring-boot:run
+# Bật file watch để auto restart/rebuild theo thay đổi code
+docker compose -f docker-compose.dev.yml watch
 ```
 
-| Thay đổi | Cần làm gì? |
-|----------|-------------|
-| Sửa code (.java) | ❌ Không - DevTools tự restart |
-| Sửa application.properties | ❌ Không - DevTools tự restart |
-| Thêm dependencies (pom.xml) | 🔄 Restart service |
+#### Các lần làm việc tiếp theo
+
+```bash
+# Start stack
+docker compose -f docker-compose.dev.yml up -d
+
+# Bật watch (giữ terminal này mở)
+docker compose -f docker-compose.dev.yml watch
+```
+
+#### Khi bạn thay đổi code
+
+| Bạn sửa gì? | Hệ thống làm gì? |
+|-------------|------------------|
+| `backend/*-service/src/**` | ✅ Tự sync + restart đúng service |
+| `backend/*-service/pom.xml` | ✅ Tự rebuild image + recreate service |
+| `Dockerfile.dev` hoặc `docker-compose.dev.yml` | 🔄 Chạy lại `up -d --build` |
 
 ### Chế độ Production/Test
 
 ```bash
-docker-compose up --build -d
+docker compose up --build -d
 ```
-
-| Thay đổi | Cần `--build`? |
-|----------|---------------|
-| Sửa source code | ✅ Có |
-| Sửa pom.xml | ✅ Có |
-| Sửa Dockerfile | ✅ Có |
-| Sửa docker-compose.yml | ❌ Không |
 
 ---
 
@@ -108,24 +119,43 @@ POST /api/auth/login/admin
 ## 🚀 Các lệnh Docker thường dùng
 
 ```bash
+
+# Build + start dev stack (lần đầu)
+docker compose -f docker-compose.dev.yml up -d --build
+
+# Start dev stack
+docker compose -f docker-compose.dev.yml up -d
+
+# Auto restart/rebuild khi sửa code (giữ terminal chạy)
+docker compose -f docker-compose.dev.yml watch
+
 # Khởi động
-docker-compose up -d                    # Start all
-docker-compose up -d postgres           # Start specific service
+docker compose -f docker-compose.dev.yml up -d                    # Start all
+docker compose -f docker-compose.dev.yml up -d postgres           # Start specific service
 
 # Dừng
-docker-compose stop                     # Stop all (giữ data)
-docker-compose down                     # Remove containers (giữ data)
-docker-compose down -v                  # Remove all + XÓA DATA
+docker compose -f docker-compose.dev.yml stop                     # Stop all (giữ data)
+docker compose -f docker-compose.dev.yml down                     # Remove containers (giữ data)
+docker compose -f docker-compose.dev.yml down -v                  # Remove all + XÓA DATA
+
+# Xóa toàn bộ service hiện tại (khuyên dùng khi muốn reset stack)
+docker compose -f docker-compose.dev.yml down -v --remove-orphans
+
+# Nếu trước đó có chạy file docker-compose.yml thì xóa luôn stack đó
+docker compose down -v --remove-orphans
+
+# (Tùy chọn) Xóa luôn image build local để build lại từ đầu sạch 100%
+docker compose -f docker-compose.dev.yml down --rmi local --remove-orphans
 
 # Logs
-docker-compose logs -f auth-service     # Xem logs realtime
+docker compose -f docker-compose.dev.yml logs -f auth-service     # Xem logs realtime
 
 # Trạng thái
-docker-compose ps                       # Xem status
+docker compose -f docker-compose.dev.yml ps                       # Xem status
 
 # Truy cập database
-docker-compose exec postgres psql -U postgres -d secondhand_auth_db
-docker-compose exec redis redis-cli
+docker compose -f docker-compose.dev.yml exec postgres psql -U postgres -d secondhand_auth_db
+docker compose -f docker-compose.dev.yml exec redis redis-cli
 ```
 
 ---
@@ -143,13 +173,9 @@ docker-compose exec redis redis-cli
 ## ⚠️ Lưu ý
 
 1. **Lần đầu chạy**: Cần thời gian pull images và khởi tạo databases
-2. **Xóa data**: `docker-compose down -v` sẽ **XÓA TOÀN BỘ DATA**
-3. **Dev mode**: Dùng `docker-compose.dev.yml` + chạy service local để code nhanh hơn
+2. **Xóa data**: `docker compose -f docker-compose.dev.yml down -v` sẽ **XÓA TOÀN BỘ DATA**
+3. **Auto restart khi sửa code**: Luôn chạy thêm `docker compose -f docker-compose.dev.yml watch`
+4. **Dev compose có Kong**: có thể test qua gateway (`http://localhost:8000`) hoặc gọi trực tiếp service port (`8081`, `8082`, `8083`)
 
-# Để tự động rebuild docker khi sửa code thì luôn chạy:
-# Lần đầu (build image + download deps):
-docker compose -f docker-compose.dev.yml up --build
-
-# Các lần sau:
-docker compose -f docker-compose.dev.yml up
-
+# chạy lại init.sql để khởi tạo lại database:
+Get-Content backend/postgres/init.sql | docker exec -i ktpm-postgres psql -U postgres
