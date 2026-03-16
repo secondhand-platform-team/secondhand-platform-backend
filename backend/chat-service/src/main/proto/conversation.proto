@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.secondhand.chatservice.grpc.conversation";
+option java_outer_classname = "ConversationProto";
+
+package conversation;
+
+service ConversationService {
+  rpc CreateConversation (CreateConversationRequest) returns (CreateConversationResponse);
+}
+
+message CreateConversationRequest {
+  string initiatorUserId = 1;
+  string participantUserId = 2;
+}
+
+message CreateConversationResponse {
+  string conversationId = 1;
+}

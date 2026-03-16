@@ -53,6 +53,7 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       ORDER_SERVICE_GRPC_ADDRESS: static://order-service:9093
+      CHAT_SERVICE_GRPC_ADDRESS: static://chat-service:9094
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
       SPRING_RABBITMQ_HOST: rabbitmq
@@ -66,6 +67,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      chat-service:
+        condition: service_started
     networks:
       - secondhand
   # =========================
@@ -147,6 +150,7 @@ services:
     command: ./mvnw spring-boot:run
     ports:
       - "8084:8084"
+      - "9094:9094"
     environment:
       SPRING_APPLICATION_NAME: chat-service
       SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/secondhand_chat_db

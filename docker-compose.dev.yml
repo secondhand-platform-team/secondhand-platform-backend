@@ -147,6 +147,7 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       ORDER_SERVICE_GRPC_ADDRESS: static://order-service:9093
+      CHAT_SERVICE_GRPC_ADDRESS: static://chat-service:9094
     develop:
       watch:
         - action: sync+restart
@@ -157,6 +158,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      chat-service:
+        condition: service_started
     networks:
       - secondhand
     restart: unless-stopped
@@ -236,6 +239,7 @@ services:
       - maven-repo:/root/.m2
     ports:
       - "8084:8084"
+      - "9094:9094"
     environment:
       SPRING_DATA_MONGODB_URI: mongodb://ktpm-mongodb:27017/secondhand_chat_db
     develop:
