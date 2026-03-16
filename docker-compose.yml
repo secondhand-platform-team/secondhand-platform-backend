@@ -52,7 +52,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/secondhand_auth_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      ORDER_SERVICE_BASE_URL: http://order-service:8083
+      ORDER_SERVICE_GRPC_ADDRESS: static://order-service:9093
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
       SPRING_RABBITMQ_HOST: rabbitmq
@@ -111,6 +111,7 @@ services:
     command: ./mvnw spring-boot:run
     ports:
       - "8083:8083"
+      - "9093:9093"
     environment:
       SPRING_APPLICATION_NAME: order-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/secondhand_order_db
@@ -130,6 +131,37 @@ services:
       rabbitmq:
         condition: service_healthy
       mongodb:
+        condition: service_healthy
+    networks:
+      - secondhand
+
+    # =========================
+  # CHAT SERVICE
+  # =========================
+  chat-service:
+    image: eclipse-temurin:21-jdk
+    container_name: ktpm-chat-service
+    working_dir: /app
+    volumes:
+      - ./backend/chat-service:/app
+    command: ./mvnw spring-boot:run
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_APPLICATION_NAME: chat-service
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/secondhand_chat_db
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: admin
+      SPRING_RABBITMQ_PASSWORD: admin123
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - secondhand

@@ -6,6 +6,7 @@ import com.secondhand.authservice.dto.response.AuthResponse;
 import com.secondhand.authservice.dto.response.MessageResponse;
 import com.secondhand.authservice.dto.response.UserInfoResponse;
 import com.secondhand.authservice.exception.BadRequestException;
+import com.secondhand.authservice.grpc.CartGrpcClient;
 import com.secondhand.authservice.model.User;
 import com.secondhand.authservice.model.UserProfile;
 import com.secondhand.authservice.model.enums.Role;
@@ -13,11 +14,6 @@ import com.secondhand.authservice.repository.UserRepository;
 import com.secondhand.authservice.service.AuthService;
 import com.secondhand.authservice.utils.JwtUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -25,11 +21,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -40,10 +33,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
-    private final RestTemplate restTemplate;
-
-    @Value("${order.service.base-url}")
-    private String orderServiceBaseUrl;
+    private final CartGrpcClient cartGrpcClient;
 
     @Override
     public AuthResponse login(LoginRequest request) {
@@ -134,21 +124,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private void createCartForUser(String userId) {
-        String endpoint = orderServiceBaseUrl + "/api/internal/carts";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<Map<String, String>> requestEntity =
-                new HttpEntity<>(Map.of("userId", userId), headers);
-
-        try {
-            ResponseEntity<Void> response = restTemplate.postForEntity(endpoint, requestEntity, Void.class);
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new BadRequestException("Create cart failed at order-service");
-            }
-        } catch (RestClientException exception) {
-            throw new BadRequestException("Cannot create cart for user", exception);
-        }
+        cartGrpcClient.createCart(userId);
     }
 
     @Override

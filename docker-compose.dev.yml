@@ -146,7 +146,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://ktpm-postgres:5432/secondhand_auth_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      ORDER_SERVICE_BASE_URL: http://order-service:8083
+      ORDER_SERVICE_GRPC_ADDRESS: static://order-service:9093
     develop:
       watch:
         - action: sync+restart
@@ -205,6 +205,7 @@ services:
       - maven-repo:/root/.m2
     ports:
       - "8083:8083"
+      - "9093:9093"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://ktpm-postgres:5432/secondhand_order_db
       SPRING_DATASOURCE_USERNAME: postgres
@@ -222,10 +223,40 @@ services:
     networks:
       - secondhand
     restart: unless-stopped
+  # =========================
+  # CHAT SERVICE (dev mode)
+  # =========================
+  chat-service:
+    build:
+      context: ./backend/chat-service
+      dockerfile: Dockerfile.dev
+    container_name: ktpm-chat-service
+    volumes:
+      - ./backend/chat-service:/app
+      - maven-repo:/root/.m2
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://ktpm-mongodb:27017/secondhand_chat_db
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./backend/chat-service/src
+          target: /app/src
+        - action: rebuild
+          path: ./backend/chat-service/pom.xml
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - secondhand
+    restart: unless-stopped
 
 networks:
   secondhand:
     driver: bridge
+
+
 
 volumes:
   postgres_data:

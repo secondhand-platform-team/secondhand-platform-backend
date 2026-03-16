@@ -18,6 +18,19 @@ public class CartServiceImpl implements CartService {
 
     @Override
     @Transactional
+    public Cart createOrGetCart(String userId) {
+        return cartRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    Cart cart = new Cart();
+                    cart.setId(UUID.randomUUID().toString());
+                    cart.setUserId(userId);
+                    cart.setCartItems(new ArrayList<>());
+                    return cartRepository.save(cart);
+                });
+    }
+
+    @Override
+    @Transactional
     public boolean createCartIfAbsent(String userId) {
         if (cartRepository.existsByUserId(userId)) {
             return false;
