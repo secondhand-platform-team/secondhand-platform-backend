@@ -5,6 +5,8 @@ import com.secondhand.authservice.dto.request.RegisterRequest;
 import com.secondhand.authservice.dto.response.AuthResponse;
 import com.secondhand.authservice.dto.response.MessageResponse;
 import com.secondhand.authservice.dto.response.UserInfoResponse;
+import com.secondhand.authservice.dto.response.UserProfileInfoResponse;
+import com.secondhand.authservice.dto.response.UserProfileResponse;
 import com.secondhand.authservice.exception.BadRequestException;
 import com.secondhand.authservice.grpc.CartGrpcClient;
 import com.secondhand.authservice.model.User;
@@ -138,5 +140,31 @@ public class AuthServiceImpl implements AuthService {
                 user.getPhoneNumber(),
                 user.getRole().name(),
                 user.isStatus());
+    }
+
+    @Override
+    public UserProfileInfoResponse getCurrentUserProfile(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+
+        UserInfoResponse userInfo = new UserInfoResponse(
+                user.getUserId(),
+                user.getEmail(),
+                user.getPhoneNumber(),
+                user.getRole().name(),
+                user.isStatus());
+
+        UserProfile userProfile = user.getUserProfile();
+        UserProfileResponse profileResponse = null;
+        if (userProfile != null) {
+            profileResponse = new UserProfileResponse(
+                    userProfile.getFullName(),
+                    userProfile.getAvatarUrl(),
+                    userProfile.getDateOfBirth(),
+                    userProfile.getGender(),
+                    userProfile.getBio());
+        }
+
+        return new UserProfileInfoResponse(userInfo, profileResponse);
     }
 }
