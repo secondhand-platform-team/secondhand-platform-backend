@@ -59,7 +59,7 @@ public class AuthServiceImpl implements AuthService {
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
 
-        String token = jwtUtils.generateToken(userDetails);
+        String token = jwtUtils.generateToken(userDetails, user.getUserId());
 
         return new AuthResponse(token, "Bearer");
     }
@@ -145,6 +145,32 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public UserProfileInfoResponse getCurrentUserProfile(String email) {
         User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+
+        UserInfoResponse userInfo = new UserInfoResponse(
+                user.getUserId(),
+                user.getEmail(),
+                user.getPhoneNumber(),
+                user.getRole().name(),
+                user.isStatus());
+
+        UserProfile userProfile = user.getUserProfile();
+        UserProfileResponse profileResponse = null;
+        if (userProfile != null) {
+            profileResponse = new UserProfileResponse(
+                    userProfile.getFullName(),
+                    userProfile.getAvatarUrl(),
+                    userProfile.getDateOfBirth(),
+                    userProfile.getGender(),
+                    userProfile.getBio());
+        }
+
+        return new UserProfileInfoResponse(userInfo, profileResponse);
+    }
+
+    @Override
+    public UserProfileInfoResponse getUserProfileByUserId(String userId) {
+        User user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new BadRequestException("User not found"));
 
         UserInfoResponse userInfo = new UserInfoResponse(

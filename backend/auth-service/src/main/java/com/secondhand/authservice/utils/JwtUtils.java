@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 @Component
 public class JwtUtils {
@@ -27,7 +28,7 @@ public class JwtUtils {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(UserDetails userDetails) {
+        public String generateToken(UserDetails userDetails, String userId) {
 
         List<String> roles = userDetails.getAuthorities()
                 .stream()
@@ -36,12 +37,21 @@ public class JwtUtils {
 
         return Jwts.builder()
                 .setSubject(userDetails.getUsername())
-                .claim("roles", roles)
+            .addClaims(Map.of("roles", roles, "userId", userId))
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expirationMs))
                 .signWith(getKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
+
+        public String extractUserId(String token) {
+        return Jwts.parserBuilder()
+            .setSigningKey(getKey())
+            .build()
+            .parseClaimsJws(token)
+            .getBody()
+            .get("userId", String.class);
+        }
 
     public String extractEmail(String token) {
         return Jwts.parserBuilder()

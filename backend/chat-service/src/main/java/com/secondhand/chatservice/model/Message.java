@@ -7,6 +7,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -28,6 +29,10 @@ public class Message {
     private MessageType type;
 
     private String content;
+
+    private String replyToMessageId;
+
+    private List<MessageReaction> reactions;
 
     private MessageStatus status;
 

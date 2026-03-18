@@ -12,4 +12,5 @@ public class ChatMessageRequest {
     private String receiverId;
     private String content;
     private MessageType type;
+    private String replyToMessageId;
 }

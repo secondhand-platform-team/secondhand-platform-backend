@@ -22,4 +22,6 @@ public interface AuthService {
     UserInfoResponse getCurrentUser(String email);
 
     UserProfileInfoResponse getCurrentUserProfile(String email);
+
+    UserProfileInfoResponse getUserProfileByUserId(String userId);
 }

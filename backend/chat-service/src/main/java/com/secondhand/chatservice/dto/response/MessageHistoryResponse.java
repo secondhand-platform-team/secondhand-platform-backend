@@ -1,4 +1,4 @@
-package com.secondhand.chatservice.dto.websocket;
+package com.secondhand.chatservice.dto.response;
 
 import com.secondhand.chatservice.model.enums.MessageStatus;
 import com.secondhand.chatservice.model.enums.MessageType;
@@ -12,7 +12,7 @@ import java.util.List;
 
 @Getter
 @Builder
-public class ChatMessageResponse {
+public class MessageHistoryResponse {
     private String messageId;
     private String conversationId;
     private String senderId;

@@ -14,8 +14,9 @@ services:
           minute: 60
           hour: 1000
           policy: redis
-          redis_host: redis
-          redis_port: 6379
+          redis:
+            host: redis
+            port: 6379
   - name: core-service
     url: http://core-service:8082
     routes:
@@ -37,3 +38,6 @@ services:
         paths:
           - /chat
         strip_path: true
+        protocols:
+          - http
+          - https

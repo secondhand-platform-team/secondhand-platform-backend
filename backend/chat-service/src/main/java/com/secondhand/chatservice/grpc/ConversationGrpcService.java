@@ -9,12 +9,16 @@ import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import net.devh.boot.grpc.server.service.GrpcService;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+
+import java.util.Map;
 
 @GrpcService
 @RequiredArgsConstructor
 public class ConversationGrpcService extends ConversationServiceGrpc.ConversationServiceImplBase {
 
     private final ConversationService conversationService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Override
     public void createConversation(CreateConversationRequest request,
@@ -23,6 +27,11 @@ public class ConversationGrpcService extends ConversationServiceGrpc.Conversatio
             Conversation conversation = conversationService.createDirectConversation(
                     request.getInitiatorUserId(),
                     request.getParticipantUserId());
+
+            // Notify the participant (user B) so they see the new conversation in real-time
+            messagingTemplate.convertAndSend(
+                    "/topic/users/" + request.getParticipantUserId() + "/conversations",
+                    Map.of("event", "new_conversation", "conversationId", conversation.getId()));
 
             CreateConversationResponse response = CreateConversationResponse.newBuilder()
                     .setConversationId(conversation.getId())
