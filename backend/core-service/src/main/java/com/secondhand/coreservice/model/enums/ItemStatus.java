@@ -1,5 +1,5 @@
 package com.secondhand.coreservice.model.enums;
 
 public enum ItemStatus {
-    AVAILABLE, RESERVED, SOLD, HIDDEN
+    AVAILABLE, RESERVED, SOLD, HIDDEN, ACTIVE
 }

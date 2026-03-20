@@ -15,6 +15,14 @@ public class Location {
     @Id
     private String locationId;
 
+    private String address;
+
+    private String ward;
+
+    private String district;
+
+    private String city;
+
     @OneToOne
     @JoinColumn(name = "item_id")
     private Item item;

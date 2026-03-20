@@ -27,4 +27,6 @@ public class ItemImage {
     private Boolean isThumbnail;
 
     private Integer displayOrder;
+
+    private Boolean isPrimary;
 }
