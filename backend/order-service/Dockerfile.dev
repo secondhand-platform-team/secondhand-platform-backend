@@ -1,0 +1,13 @@
+FROM maven:3.9-eclipse-temurin-21
+
+WORKDIR /app
+
+# Pre-cache dependencies vào image layer (tăng tốc rebuild khi pom.xml không đổi)
+COPY pom.xml .
+RUN mvn -B -q -DskipTests dependency:go-offline
+
+EXPOSE 8083
+
+# Chạy trực tiếp bằng Maven, không build JAR
+# Devtools sẽ watch target/classes và restart khi IDE compile
+CMD ["mvn", "spring-boot:run"]

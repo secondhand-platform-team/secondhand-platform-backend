@@ -1,0 +1,26 @@
+package com.secondhand.chatservice.dto.websocket;
+
+import com.secondhand.chatservice.model.enums.MessageStatus;
+import com.secondhand.chatservice.model.enums.MessageType;
+import com.secondhand.chatservice.dto.common.MessageReactionDto;
+import com.secondhand.chatservice.dto.common.ReplyMessageDto;
+import lombok.Builder;
+import lombok.Getter;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Getter
+@Builder
+public class ChatMessageResponse {
+    private String messageId;
+    private String conversationId;
+    private String senderId;
+    private String receiverId;
+    private String content;
+    private MessageType type;
+    private MessageStatus status;
+    private LocalDateTime createdAt;
+    private ReplyMessageDto replyTo;
+    private List<MessageReactionDto> reactions;
+}

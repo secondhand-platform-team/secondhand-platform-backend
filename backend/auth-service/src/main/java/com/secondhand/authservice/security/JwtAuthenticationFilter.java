@@ -1,8 +1,10 @@
 package com.secondhand.authservice.security;
 
+import com.secondhand.authservice.utils.AuthCookieUtils;
 import com.secondhand.authservice.utils.JwtUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -25,9 +27,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         @Override
         protected boolean shouldNotFilter(HttpServletRequest request) {
                 String path = request.getServletPath();
-                String uri = request.getRequestURI();
-                // Skip filter for auth endpoints (both direct and through gateway)
-                return path.startsWith("/api/auth/login") || uri.contains("/api/auth/register");
+                // Skip filter for public auth endpoints
+                return path.startsWith("/api/auth/login")
+                                || path.startsWith("/api/auth/register")
+                                || path.startsWith("/api/login")
+                                || path.startsWith("/api/register");
         }
 
         @Override
@@ -36,30 +40,40 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         HttpServletResponse response,
                         FilterChain filterChain) throws ServletException, IOException {
 
-                String header = request.getHeader("Authorization");
+                String token = extractAccessTokenFromCookies(request.getCookies());
 
-                if (header != null && header.startsWith("Bearer ")) {
-                        String token = header.substring(7);
+                if (token != null && jwtUtils.validateToken(token)) {
+                        String email = jwtUtils.extractEmail(token);
 
-                        if (jwtUtils.validateToken(token)) {
-                                String email = jwtUtils.extractEmail(token);
+                        UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-                                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                        userDetails,
+                                        null,
+                                        userDetails.getAuthorities());
 
-                                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                                                userDetails,
-                                                null,
-                                                userDetails.getAuthorities());
+                        authentication.setDetails(
+                                        new WebAuthenticationDetailsSource()
+                                                        .buildDetails(request));
 
-                                authentication.setDetails(
-                                                new WebAuthenticationDetailsSource()
-                                                                .buildDetails(request));
-
-                                SecurityContextHolder.getContext()
-                                                .setAuthentication(authentication);
-                        }
+                        SecurityContextHolder.getContext()
+                                        .setAuthentication(authentication);
                 }
 
                 filterChain.doFilter(request, response);
+        }
+
+        private String extractAccessTokenFromCookies(Cookie[] cookies) {
+                if (cookies == null) {
+                        return null;
+                }
+
+                for (Cookie cookie : cookies) {
+                        if (AuthCookieUtils.ACCESS_TOKEN_COOKIE_NAME.equals(cookie.getName())) {
+                                return cookie.getValue();
+                        }
+                }
+
+                return null;
         }
 }

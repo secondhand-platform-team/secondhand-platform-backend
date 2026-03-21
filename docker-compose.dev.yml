@@ -1,7 +1,46 @@
 # Docker Compose cho môi trường DEV
-# Chỉ chạy databases, services chạy local bằng IDE
+# Chạy toàn bộ backend services trong Docker + hỗ trợ auto-restart bằng `docker compose watch`
 
 services:
+
+  # =========================
+  # KONG API GATEWAY (dev mode)
+  # =========================
+  kong:
+    image: kong:latest
+    container_name: ktpm-kong
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+      - "8443:8443"
+      - "8001:8001"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+    volumes:
+      - ./gateway/kong/kong.yml:/var/lib/kong/kong.yml:ro
+    depends_on:
+      auth-service:
+        condition: service_started
+      core-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - secondhand
+    healthcheck:
+      test: [ "CMD", "kong", "health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # =========================
   # POSTGRESQL
@@ -18,6 +57,7 @@ services:
       POSTGRES_DB: secondhand_auth_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./backend/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - secondhand
     healthcheck:
@@ -89,12 +129,142 @@ services:
       timeout: 5s
       retries: 5
 
+  # =========================
+  # AUTH SERVICE (dev mode)
+  # =========================
+  auth-service:
+    build:
+      context: ./backend/auth-service
+      dockerfile: Dockerfile.dev
+    container_name: ktpm-auth-service
+    volumes:
+      - ./backend/auth-service:/app          # mount toàn bộ source vào container
+      - maven-repo:/root/.m2                 # cache Maven deps dùng chung
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://ktpm-postgres:5432/secondhand_auth_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      ORDER_SERVICE_GRPC_ADDRESS: static://order-service:9093
+      CHAT_SERVICE_GRPC_ADDRESS: static://chat-service:9094
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./backend/auth-service/src
+          target: /app/src
+        - action: rebuild
+          path: ./backend/auth-service/pom.xml
+    depends_on:
+      postgres:
+        condition: service_healthy
+      chat-service:
+        condition: service_started
+    networks:
+      - secondhand
+    restart: unless-stopped
+
+  # =========================
+  # CORE SERVICE (dev mode)
+  # =========================
+  core-service:
+    build:
+      context: ./backend/core-service
+      dockerfile: Dockerfile.dev
+    container_name: ktpm-core-service
+    volumes:
+      - ./backend/core-service:/app
+      - maven-repo:/root/.m2
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://ktpm-postgres:5432/secondhand_core_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./backend/core-service/src
+          target: /app/src
+        - action: rebuild
+          path: ./backend/core-service/pom.xml
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - secondhand
+    restart: unless-stopped
+
+  # =========================
+  # ORDER SERVICE (dev mode)
+  # =========================
+  order-service:
+    build:
+      context: ./backend/order-service
+      dockerfile: Dockerfile.dev
+    container_name: ktpm-order-service
+    volumes:
+      - ./backend/order-service:/app
+      - maven-repo:/root/.m2
+    ports:
+      - "8083:8083"
+      - "9093:9093"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://ktpm-postgres:5432/secondhand_order_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./backend/order-service/src
+          target: /app/src
+        - action: rebuild
+          path: ./backend/order-service/pom.xml
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - secondhand
+    restart: unless-stopped
+  # =========================
+  # CHAT SERVICE (dev mode)
+  # =========================
+  chat-service:
+    build:
+      context: ./backend/chat-service
+      dockerfile: Dockerfile.dev
+    container_name: ktpm-chat-service
+    volumes:
+      - ./backend/chat-service:/app
+      - maven-repo:/root/.m2
+    ports:
+      - "8084:8084"
+      - "9094:9094"
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://ktpm-mongodb:27017/secondhand_chat_db
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./backend/chat-service/src
+          target: /app/src
+        - action: rebuild
+          path: ./backend/chat-service/pom.xml
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - secondhand
+    restart: unless-stopped
+
 networks:
   secondhand:
     driver: bridge
+
+
 
 volumes:
   postgres_data:
   redis_data:
   mongodb_data:
   rabbitmq_data:
+  maven-repo:          # shared Maven cache — tải deps 1 lần, tất cả service dùng chung

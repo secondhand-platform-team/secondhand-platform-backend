@@ -5,7 +5,10 @@ import com.secondhand.authservice.dto.request.RegisterRequest;
 import com.secondhand.authservice.dto.response.AuthResponse;
 import com.secondhand.authservice.dto.response.MessageResponse;
 import com.secondhand.authservice.dto.response.UserInfoResponse;
+import com.secondhand.authservice.dto.response.UserProfileInfoResponse;
+import com.secondhand.authservice.dto.response.UserProfileResponse;
 import com.secondhand.authservice.exception.BadRequestException;
+import com.secondhand.authservice.grpc.CartGrpcClient;
 import com.secondhand.authservice.model.User;
 import com.secondhand.authservice.model.UserProfile;
 import com.secondhand.authservice.model.enums.Role;
@@ -32,18 +35,31 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
+    private final CartGrpcClient cartGrpcClient;
 
     @Override
     public AuthResponse login(LoginRequest request) {
+        return loginByRole(request, Role.USER);
+    }
+
+    @Override
+    public AuthResponse loginByRole(LoginRequest request, Role requiredRole) {
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getEmail(),
                         request.getPassword()));
 
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new BadRequestException("User not found"));
+
+        if (user.getRole() != requiredRole) {
+            throw new BadRequestException("Account does not have permission to login here");
+        }
+
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
 
-        String token = jwtUtils.generateToken(userDetails);
+        String token = jwtUtils.generateToken(userDetails, user.getUserId());
 
         return new AuthResponse(token, "Bearer");
     }
@@ -51,6 +67,25 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public MessageResponse register(RegisterRequest request) {
+        return registerUser(request);
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse registerUser(RegisterRequest request) {
+        User user = registerWithRole(request, Role.USER);
+        createCartForUser(user.getUserId());
+        return MessageResponse.success("User registration successful! Please login to continue.");
+    }
+
+    @Override
+    @Transactional
+    public MessageResponse registerAdmin(RegisterRequest request) {
+        registerWithRole(request, Role.ADMIN);
+        return MessageResponse.success("Admin registration successful! Please login to continue.");
+    }
+
+    private User registerWithRole(RegisterRequest request, Role role) {
         // Validate password confirmation
         if (!request.getPassword().equals(request.getConfirmPassword())) {
             throw new BadRequestException("Password and confirm password do not match");
@@ -72,7 +107,7 @@ public class AuthServiceImpl implements AuthService {
                 .email(request.getEmail())
                 .phoneNumber(request.getPhoneNumber())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(Role.USER)
+            .role(role)
                 .status(true)
                 .createdAt(LocalDate.now())
                 .updatedAt(LocalDate.now())
@@ -87,9 +122,11 @@ public class AuthServiceImpl implements AuthService {
         user.setUserProfile(userProfile);
 
         // Save user (cascades to user profile)
-        userRepository.save(user);
+        return userRepository.save(user);
+    }
 
-        return MessageResponse.success("Registration successful! Please login to continue.");
+    private void createCartForUser(String userId) {
+        cartGrpcClient.createCart(userId);
     }
 
     @Override
@@ -103,5 +140,57 @@ public class AuthServiceImpl implements AuthService {
                 user.getPhoneNumber(),
                 user.getRole().name(),
                 user.isStatus());
+    }
+
+    @Override
+    public UserProfileInfoResponse getCurrentUserProfile(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+
+        UserInfoResponse userInfo = new UserInfoResponse(
+                user.getUserId(),
+                user.getEmail(),
+                user.getPhoneNumber(),
+                user.getRole().name(),
+                user.isStatus());
+
+        UserProfile userProfile = user.getUserProfile();
+        UserProfileResponse profileResponse = null;
+        if (userProfile != null) {
+            profileResponse = new UserProfileResponse(
+                    userProfile.getFullName(),
+                    userProfile.getAvatarUrl(),
+                    userProfile.getDateOfBirth(),
+                    userProfile.getGender(),
+                    userProfile.getBio());
+        }
+
+        return new UserProfileInfoResponse(userInfo, profileResponse);
+    }
+
+    @Override
+    public UserProfileInfoResponse getUserProfileByUserId(String userId) {
+        User user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+
+        UserInfoResponse userInfo = new UserInfoResponse(
+                user.getUserId(),
+                user.getEmail(),
+                user.getPhoneNumber(),
+                user.getRole().name(),
+                user.isStatus());
+
+        UserProfile userProfile = user.getUserProfile();
+        UserProfileResponse profileResponse = null;
+        if (userProfile != null) {
+            profileResponse = new UserProfileResponse(
+                    userProfile.getFullName(),
+                    userProfile.getAvatarUrl(),
+                    userProfile.getDateOfBirth(),
+                    userProfile.getGender(),
+                    userProfile.getBio());
+        }
+
+        return new UserProfileInfoResponse(userInfo, profileResponse);
     }
 }
