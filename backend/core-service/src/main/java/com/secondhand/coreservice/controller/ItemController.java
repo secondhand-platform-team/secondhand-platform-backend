@@ -12,14 +12,19 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.secondhand.coreservice.dto.request.ItemRequest;
 import com.secondhand.coreservice.dto.response.ItemResponse;
 import com.secondhand.coreservice.dto.response.MessageResponse;
 import com.secondhand.coreservice.service.ItemService;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import jakarta.validation.Valid;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -29,10 +34,39 @@ import lombok.RequiredArgsConstructor;
 public class ItemController {
 
     private final ItemService itemService;
+    private final Validator validator;
 
-    @PostMapping
-    public ResponseEntity<ItemResponse> createItem(@Valid @RequestBody ItemRequest request) {
-        ItemResponse response = itemService.createItem(request);
+    @PostMapping(consumes = { "multipart/form-data" })
+    public ResponseEntity<ItemResponse> createItem(
+            @RequestPart("item") String itemJson,
+            @RequestPart(value = "images", required = false) MultipartFile[] images) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            ItemRequest request = mapper.readValue(itemJson, ItemRequest.class);
+
+            // Validate request
+            var violations = validator.validate(request);
+            if (!violations.isEmpty()) {
+                String errorMsg = violations.stream()
+                        .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                        .reduce((a, b) -> a + ", " + b)
+                        .orElse("Validation error");
+                throw new com.secondhand.coreservice.exception.BadRequestException(errorMsg);
+            }
+
+            ItemResponse response = itemService.createItem(request, images);
+            return new ResponseEntity<>(response, HttpStatus.CREATED);
+        } catch (com.secondhand.coreservice.exception.BadRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new com.secondhand.coreservice.exception.BadRequestException(
+                    "Invalid item JSON: " + e.getMessage());
+        }
+    }
+
+    @PostMapping(path = "/json", consumes = { "application/json" })
+    public ResponseEntity<ItemResponse> createItemJson(@Valid @RequestBody ItemRequest request) {
+        ItemResponse response = itemService.createItem(request, null);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 

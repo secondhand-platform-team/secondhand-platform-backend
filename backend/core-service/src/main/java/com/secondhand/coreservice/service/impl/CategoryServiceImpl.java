@@ -2,18 +2,20 @@ package com.secondhand.coreservice.service.impl;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.secondhand.coreservice.dto.request.CategoryRequest;
+import com.secondhand.coreservice.dto.response.CategoryAttributeResponse;
 import com.secondhand.coreservice.dto.response.CategoryResponse;
 import com.secondhand.coreservice.dto.response.MessageResponse;
 import com.secondhand.coreservice.exception.BadRequestException;
 import com.secondhand.coreservice.exception.ResourceNotFoundException;
 import com.secondhand.coreservice.model.Category;
+import com.secondhand.coreservice.model.CategoryAttribute;
+import com.secondhand.coreservice.repository.CategoryAttributeRepository;
 import com.secondhand.coreservice.repository.CategoryRepository;
 import com.secondhand.coreservice.service.CategoryService;
 
@@ -25,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final CategoryAttributeRepository categoryAttributeRepository;
 
     @Override
     public CategoryResponse createCategory(CategoryRequest request) {
@@ -33,7 +36,6 @@ public class CategoryServiceImpl implements CategoryService {
         }
 
         Category category = Category.builder()
-                .categoryId(UUID.randomUUID().toString())
                 .name(request.getName())
                 .description(request.getDescription())
                 .createdAt(LocalDateTime.now())
@@ -88,13 +90,59 @@ public class CategoryServiceImpl implements CategoryService {
         return new MessageResponse("Category deleted successfully", true);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<CategoryResponse> getCategoryChildren(String parentCategoryId) {
+        Category parentCategory = categoryRepository.findById(parentCategoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + parentCategoryId));
+        
+        return parentCategory.getChildren().stream()
+                .map(this::mapToCategoryResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CategoryAttributeResponse> getCategoryAttributes(String categoryId) {
+        // Kiểm tra category có tồn tại
+        if (!categoryRepository.existsById(categoryId)) {
+            throw new ResourceNotFoundException("Category not found with id: " + categoryId);
+        }
+        
+        List<CategoryAttribute> attributes = categoryAttributeRepository.findByCategoryCategoryId(categoryId);
+        return attributes.stream()
+                .map(this::mapToCategoryAttributeResponse)
+                .collect(Collectors.toList());
+    }
+
     private CategoryResponse mapToCategoryResponse(Category category) {
         return CategoryResponse.builder()
                 .categoryId(category.getCategoryId())
                 .name(category.getName())
                 .description(category.getDescription())
+                .parentId(category.getParent() != null ? category.getParent().getCategoryId() : null)
                 .createdAt(category.getCreatedAt())
                 .updatedAt(category.getUpdatedAt())
+                .build();
+    }
+
+    private CategoryAttributeResponse mapToCategoryAttributeResponse(CategoryAttribute attribute) {
+        return CategoryAttributeResponse.builder()
+                .attributeId(attribute.getAttributeId())
+                .code(attribute.getCode())
+                .name(attribute.getName())
+                .description(attribute.getDescription())
+                .dataType(attribute.getDataType().toString())
+                .unit(attribute.getUnit())
+                .required(attribute.getRequired())
+                .filterable(attribute.getFilterable())
+                .searchable(attribute.getSearchable())
+                .minValueNumber(attribute.getMinValueNumber())
+                .maxValueNumber(attribute.getMaxValueNumber())
+                .optionsJson(attribute.getOptionsJson())
+                .sortOrder(attribute.getSortOrder())
+                .createdAt(attribute.getCreatedAt())
+                .updatedAt(attribute.getUpdatedAt())
                 .build();
     }
 }

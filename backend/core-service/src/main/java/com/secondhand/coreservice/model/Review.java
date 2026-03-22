@@ -1,5 +1,7 @@
 package com.secondhand.coreservice.model;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.secondhand.coreservice.utils.IdGenerator;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -17,7 +19,7 @@ public class Review {
     @Id
     private String reviewId;
 
-    //userId
+    // userId
     private String reivewerId;
 
     @ManyToOne
@@ -31,4 +33,14 @@ public class Review {
     private String commentContent;
 
     private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onPrePersist() {
+        if (this.reviewId == null) {
+            this.reviewId = IdGenerator.generateReviewId();
+        }
+        if (this.createdAt == null) {
+            this.createdAt = java.time.LocalDateTime.now();
+        }
+    }
 }
