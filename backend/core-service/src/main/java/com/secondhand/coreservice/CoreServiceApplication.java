@@ -10,6 +10,8 @@ public class CoreServiceApplication {
         System.out.println("VẬy là xong rồi sao?");
         SpringApplication.run(CoreServiceApplication.class, args);
         System.out.println("hahahhahaahah");
+        System.out.println("xin chao");
+
     }
 
 }

@@ -1,6 +1,7 @@
 package com.secondhand.coreservice.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.secondhand.coreservice.utils.IdGenerator;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -13,8 +14,7 @@ import lombok.*;
 @Table(name = "item_images")
 public class ItemImage {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
     @ManyToOne
     @JoinColumn(name = "item_id", nullable = false)
@@ -24,9 +24,18 @@ public class ItemImage {
 
     private String url;
 
+    private String cloudinaryPublicId;
+
     private Boolean isThumbnail;
 
     private Integer displayOrder;
 
     private Boolean isPrimary;
+
+    @PrePersist
+    protected void onPrePersist() {
+        if (this.id == null) {
+            this.id = IdGenerator.generateItemImageId();
+        }
+    }
 }

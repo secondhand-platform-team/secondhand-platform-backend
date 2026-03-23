@@ -27,4 +27,5 @@ public class ItemResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<ItemImageResponse> itemImageList;
+    private List<ItemAttributeResponse> attributes;
 }

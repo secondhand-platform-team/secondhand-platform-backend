@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.secondhand.coreservice.dto.request.CategoryRequest;
+import com.secondhand.coreservice.dto.response.CategoryAttributeResponse;
 import com.secondhand.coreservice.dto.response.CategoryResponse;
 import com.secondhand.coreservice.dto.response.MessageResponse;
 import com.secondhand.coreservice.service.CategoryService;
@@ -46,6 +47,18 @@ public class CategoryController {
     public ResponseEntity<CategoryResponse> getCategoryById(@PathVariable String categoryId) {
         CategoryResponse category = categoryService.getCategoryById(categoryId);
         return ResponseEntity.ok(category);
+    }
+
+    @GetMapping("/{categoryId}/parents")
+    public ResponseEntity<List<CategoryResponse>> getCategoryChildren(@PathVariable String categoryId) {
+        List<CategoryResponse> children = categoryService.getCategoryChildren(categoryId);
+        return ResponseEntity.ok(children);
+    }
+
+    @GetMapping("/{categoryId}/attributes")
+    public ResponseEntity<List<CategoryAttributeResponse>> getCategoryAttributes(@PathVariable String categoryId) {
+        List<CategoryAttributeResponse> attributes = categoryService.getCategoryAttributes(categoryId);
+        return ResponseEntity.ok(attributes);
     }
 
     @PutMapping("/{categoryId}")

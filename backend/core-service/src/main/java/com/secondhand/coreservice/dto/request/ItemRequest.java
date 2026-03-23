@@ -9,8 +9,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -27,15 +29,15 @@ public class ItemRequest {
     @NotNull(message = "Price is required")
     private BigDecimal price;
 
-    private String condition; // NEW, LIKE_NEW, GOOD, FAIR
+    private String condition; 
 
-    private String transactionType; // BUY, SELL, BOTH
+    private String transactionType; 
 
-    private String status; // AVAILABLE, RESERVED, SOLD, HIDDEN
+    private String status; 
 
     private LocationRequest location;
 
-    private String userId;
-
     private List<ItemImageRequest> itemImageList;
+
+    private List<ItemAttributeRequest> attributes;
 }
