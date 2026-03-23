@@ -41,4 +41,5 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<Addresses> addressesList;
+    private int freeSellUsed=0 ;
 }

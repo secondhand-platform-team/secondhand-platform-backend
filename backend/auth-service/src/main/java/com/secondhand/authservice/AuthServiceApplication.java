@@ -8,6 +8,8 @@ public class AuthServiceApplication {
 
     public static void main(String[] args) {
         System.out.println("sfdjasdl");
+        System.out.println("alo alo");
+
         SpringApplication.run(AuthServiceApplication.class, args);
     }
 
