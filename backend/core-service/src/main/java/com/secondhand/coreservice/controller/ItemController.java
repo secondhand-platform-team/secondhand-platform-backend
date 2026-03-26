@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.secondhand.coreservice.dto.request.ItemRequest;
+import com.secondhand.coreservice.dto.request.ItemStatusUpdateRequest;
 import com.secondhand.coreservice.dto.response.ItemResponse;
 import com.secondhand.coreservice.dto.response.MessageResponse;
 import com.secondhand.coreservice.service.ItemService;
@@ -76,6 +78,12 @@ public class ItemController {
         return ResponseEntity.ok(items);
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<List<ItemResponse>> getMyItems() {
+        List<ItemResponse> items = itemService.getMyItems();
+        return ResponseEntity.ok(items);
+    }
+
     @GetMapping("/{itemId}")
     public ResponseEntity<ItemResponse> getItemById(@PathVariable String itemId) {
         ItemResponse item = itemService.getItemById(itemId);
@@ -102,9 +110,35 @@ public class ItemController {
         return ResponseEntity.ok(response);
     }
 
+    @PatchMapping("/{itemId}/status")
+    public ResponseEntity<ItemResponse> updateItemStatus(
+            @PathVariable String itemId,
+            @Valid @RequestBody ItemStatusUpdateRequest request) {
+        ItemResponse response = itemService.updateItemStatus(itemId, request.getStatus());
+        return ResponseEntity.ok(response);
+    }
+
     @DeleteMapping("/{itemId}")
     public ResponseEntity<MessageResponse> deleteItem(@PathVariable String itemId) {
         MessageResponse response = itemService.deleteItem(itemId);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{itemId}/favorite")
+    public ResponseEntity<MessageResponse> addFavorite(@PathVariable String itemId) {
+        MessageResponse response = itemService.addFavoriteItem(itemId);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{itemId}/favorite")
+    public ResponseEntity<MessageResponse> removeFavorite(@PathVariable String itemId) {
+        MessageResponse response = itemService.removeFavoriteItem(itemId);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/favorites/me")
+    public ResponseEntity<List<ItemResponse>> getMyFavoriteItems() {
+        List<ItemResponse> items = itemService.getMyFavoriteItems();
+        return ResponseEntity.ok(items);
     }
 }

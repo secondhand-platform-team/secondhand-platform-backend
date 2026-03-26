@@ -25,6 +25,7 @@ import com.secondhand.coreservice.exception.BadRequestException;
 import com.secondhand.coreservice.exception.ResourceNotFoundException;
 import com.secondhand.coreservice.model.Category;
 import com.secondhand.coreservice.model.CategoryAttribute;
+import com.secondhand.coreservice.model.FavoriteItem;
 import com.secondhand.coreservice.model.Item;
 import com.secondhand.coreservice.model.ItemAttributeValue;
 import com.secondhand.coreservice.model.ItemImage;
@@ -35,6 +36,7 @@ import com.secondhand.coreservice.model.enums.ItemStatus;
 import com.secondhand.coreservice.model.enums.TransactionType;
 import com.secondhand.coreservice.repository.CategoryAttributeRepository;
 import com.secondhand.coreservice.repository.CategoryRepository;
+import com.secondhand.coreservice.repository.FavoriteItemRepository;
 import com.secondhand.coreservice.repository.ItemAttributeValueRepository;
 import com.secondhand.coreservice.repository.ItemImageRepository;
 import com.secondhand.coreservice.repository.ItemRepository;
@@ -56,6 +58,7 @@ public class ItemServiceImpl implements ItemService {
     private final CategoryRepository categoryRepository;
     private final CategoryAttributeRepository categoryAttributeRepository;
     private final ItemAttributeValueRepository itemAttributeValueRepository;
+    private final FavoriteItemRepository favoriteItemRepository;
     private final LocationRepository locationRepository;
     private final ItemImageRepository itemImageRepository;
     private final ObjectMapper objectMapper;
@@ -243,6 +246,16 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<ItemResponse> getMyItems() {
+        String currentUserId = getCurrentUserId();
+        List<Item> items = itemRepository.findByUserId(currentUserId);
+        return items.stream()
+                .map(this::mapToItemResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ItemResponse> getItemsByCategory(String categoryId) {
         if (!categoryRepository.existsById(categoryId)) {
             throw new ResourceNotFoundException("Category not found with id: " + categoryId);
@@ -365,6 +378,31 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
+    public ItemResponse updateItemStatus(String itemId, String status) {
+        String currentUserId = getCurrentUserId();
+
+        Item item = itemRepository.findByItemId(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Item not found with id: " + itemId));
+
+        if (!item.getUserId().equals(currentUserId)) {
+            throw new BadRequestException("You do not have permission to update this item status");
+        }
+
+        ItemStatus itemStatus;
+        try {
+            itemStatus = ItemStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            throw new BadRequestException("Invalid status. Allowed values: AVAILABLE, RESERVED, SOLD, HIDDEN, ACTIVE");
+        }
+
+        item.setStatus(itemStatus);
+        item.setUpdatedAt(LocalDateTime.now());
+
+        Item updatedItem = itemRepository.save(item);
+        return mapToItemResponse(updatedItem);
+    }
+
+    @Override
     public MessageResponse deleteItem(String itemId) {
         String currentUserId = getCurrentUserId();
 
@@ -378,6 +416,48 @@ public class ItemServiceImpl implements ItemService {
 
         itemRepository.deleteById(itemId);
         return new MessageResponse("Item deleted successfully", true);
+    }
+
+    @Override
+    public MessageResponse addFavoriteItem(String itemId) {
+        String currentUserId = getCurrentUserId();
+
+        Item item = itemRepository.findByItemId(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Item not found with id: " + itemId));
+
+        if (favoriteItemRepository.existsByUserIdAndItem_ItemId(currentUserId, itemId)) {
+            return new MessageResponse("Item already in favorites", true);
+        }
+
+        FavoriteItem favoriteItem = new FavoriteItem();
+        favoriteItem.setUserId(currentUserId);
+        favoriteItem.setItem(item);
+        favoriteItemRepository.save(favoriteItem);
+
+        return new MessageResponse("Item added to favorites", true);
+    }
+
+    @Override
+    public MessageResponse removeFavoriteItem(String itemId) {
+        String currentUserId = getCurrentUserId();
+
+        FavoriteItem favoriteItem = favoriteItemRepository.findByUserIdAndItem_ItemId(currentUserId, itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Favorite item not found"));
+
+        favoriteItemRepository.delete(favoriteItem);
+        return new MessageResponse("Item removed from favorites", true);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ItemResponse> getMyFavoriteItems() {
+        String currentUserId = getCurrentUserId();
+
+        return favoriteItemRepository.findByUserId(currentUserId)
+                .stream()
+                .map(FavoriteItem::getItem)
+                .map(this::mapToItemResponse)
+                .collect(Collectors.toList());
     }
 
     @Override

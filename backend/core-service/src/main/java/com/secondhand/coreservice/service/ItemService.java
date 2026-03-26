@@ -14,8 +14,13 @@ public interface ItemService {
     ItemResponse createItemWithFileUpload(String itemJsonString, MultipartFile[] images);
     ItemResponse getItemById(String itemId);
     List<ItemResponse> getAllItems();
+    List<ItemResponse> getMyItems();
     List<ItemResponse> getItemsByCategory(String categoryId);
     List<ItemResponse> getItemsByUser(String userId);
     ItemResponse updateItem(String itemId, ItemRequest request);
+    ItemResponse updateItemStatus(String itemId, String status);
     MessageResponse deleteItem(String itemId);
+    MessageResponse addFavoriteItem(String itemId);
+    MessageResponse removeFavoriteItem(String itemId);
+    List<ItemResponse> getMyFavoriteItems();
 }
