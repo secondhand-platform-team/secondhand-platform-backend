@@ -38,6 +38,7 @@ public class CategoryServiceImpl implements CategoryService {
         Category category = Category.builder()
                 .name(request.getName())
                 .description(request.getDescription())
+                .postingFee(request.getPostingFee() != null ? request.getPostingFee() : 0L)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -75,6 +76,9 @@ public class CategoryServiceImpl implements CategoryService {
 
         category.setName(request.getName());
         category.setDescription(request.getDescription());
+        if (request.getPostingFee() != null) {
+            category.setPostingFee(request.getPostingFee());
+        }
         category.setUpdatedAt(LocalDateTime.now());
 
         Category updatedCategory = categoryRepository.save(category);
@@ -121,6 +125,7 @@ public class CategoryServiceImpl implements CategoryService {
                 .name(category.getName())
                 .description(category.getDescription())
                 .parentId(category.getParent() != null ? category.getParent().getCategoryId() : null)
+                .postingFee(category.getPostingFee())
                 .createdAt(category.getCreatedAt())
                 .updatedAt(category.getUpdatedAt())
                 .build();

@@ -19,7 +19,13 @@ public class Payment {
     @Id
     private String id;
 
+    private String transactionId;
+
     private Double amount;
+
+    private String responseCode;
+
+    private String secureHash;
 
     @Enumerated(EnumType.STRING)
     private PaymentMethod method;

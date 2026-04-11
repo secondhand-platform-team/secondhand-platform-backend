@@ -18,4 +18,5 @@ public class CategoryResponse {
     private String parentId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-}
+    private Long postingFee;
+    }

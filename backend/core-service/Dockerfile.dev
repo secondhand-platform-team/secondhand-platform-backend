@@ -8,6 +8,6 @@ RUN mvn -B -q -DskipTests dependency:go-offline
 
 EXPOSE 8082
 
-# Chạy trực tiếp bằng Maven, không build JAR
-# Devtools sẽ watch target/classes và restart khi IDE compile
-CMD ["mvn", "spring-boot:run"]
+# Compile proto files trước, sau đó chạy spring-boot:run
+# Cmd chạy compile (để generate proto files) rồi spring-boot:run
+CMD ["sh", "-c", "mvn clean compile -q -B && mvn spring-boot:run"]

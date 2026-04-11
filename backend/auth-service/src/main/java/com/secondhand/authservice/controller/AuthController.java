@@ -7,6 +7,8 @@ import com.secondhand.authservice.dto.response.UserInfoResponse;
 import com.secondhand.authservice.dto.response.UserProfileInfoResponse;
 import com.secondhand.authservice.model.enums.Role;
 import com.secondhand.authservice.service.AuthService;
+import com.secondhand.authservice.service.UserService;
+import com.secondhand.authservice.service.impl.UserServiceImpl;
 import com.secondhand.authservice.utils.AuthCookieUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ public class AuthController {
 
         private final AuthService authService;
         private final AuthCookieUtils authCookieUtils;
+        private final UserService userService;
 
         @PostMapping("/login/user")
         public ResponseEntity<UserProfileInfoResponse> loginUser(
@@ -82,6 +85,10 @@ public class AuthController {
 
         @GetMapping("/users/{userId}/profile")
         public ResponseEntity<UserProfileInfoResponse> getUserProfileByUserId(@PathVariable String userId) {
+                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                System.out.println("User: " + auth.getName());
+                System.out.println("Authorities: " + auth.getAuthorities());
+
                 UserProfileInfoResponse profileInfo = authService.getUserProfileByUserId(userId);
                 return ResponseEntity.ok(profileInfo);
         }
@@ -91,6 +98,11 @@ public class AuthController {
                 return ResponseEntity.ok()
                                 .header(HttpHeaders.SET_COOKIE, authCookieUtils.clearAccessTokenCookie().toString())
                                 .body(MessageResponse.success("Đăng xuất thành công"));
+        }
+        @PutMapping("/users/{userId}/free-sell-use/decrease")
+        public ResponseEntity<Void> decreaseFreeSellUse(@PathVariable String userId) {
+                userService.decreaseFreeSellUse(userId);
+                return ResponseEntity.ok().build();
         }
 
 }

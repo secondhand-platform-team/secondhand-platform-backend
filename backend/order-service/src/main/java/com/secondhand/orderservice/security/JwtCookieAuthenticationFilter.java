@@ -28,13 +28,17 @@ public class JwtCookieAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        String token = extractAccessTokenFromCookies(request.getCookies());
+        // Try Authorization header first, then cookies
+        String token = extractAccessTokenFromHeader(request);
+        System.out.println("in token"+ token);
+        if (token == null) {
+            token = extractAccessTokenFromCookies(request.getCookies());
+        }
 
         if (token != null && jwtUtils.validateToken(token)) {
             JwtAuthenticatedUser principal = new JwtAuthenticatedUser(
                     jwtUtils.extractUserId(token),
-                    jwtUtils.extractEmail(token)
-            );
+                    jwtUtils.extractEmail(token));
 
             List<SimpleGrantedAuthority> authorities = jwtUtils.extractRoles(token)
                     .stream()
@@ -44,13 +48,21 @@ public class JwtCookieAuthenticationFilter extends OncePerRequestFilter {
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     principal,
                     null,
-                    authorities
-            );
+                    authorities);
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authentication);
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private String extractAccessTokenFromHeader(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        System.out.println("auth header "+authHeader);
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+        return null;
     }
 
     private String extractAccessTokenFromCookies(Cookie[] cookies) {
