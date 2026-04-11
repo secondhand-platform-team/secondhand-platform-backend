@@ -21,6 +21,8 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+        private static final String BEARER_PREFIX = "Bearer ";
+
         private final JwtUtils jwtUtils;
         private final AuthUserDetailsService userDetailsService;
 
@@ -40,7 +42,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         HttpServletResponse response,
                         FilterChain filterChain) throws ServletException, IOException {
 
-                String token = extractAccessTokenFromCookies(request.getCookies());
+                String token = extractToken(request);
 
                 if (token != null && jwtUtils.validateToken(token)) {
                         String email = jwtUtils.extractEmail(token);
@@ -61,6 +63,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
 
                 filterChain.doFilter(request, response);
+        }
+
+        private String extractToken(HttpServletRequest request) {
+                String authHeader = request.getHeader("Authorization");
+                if (authHeader != null && authHeader.startsWith(BEARER_PREFIX)) {
+                        return authHeader.substring(BEARER_PREFIX.length());
+                }
+
+                return extractAccessTokenFromCookies(request.getCookies());
         }
 
         private String extractAccessTokenFromCookies(Cookie[] cookies) {

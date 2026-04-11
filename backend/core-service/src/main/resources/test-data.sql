@@ -13,46 +13,46 @@ TRUNCATE TABLE categories CASCADE;
 -- ========================================
 -- 1. PARENT CATEGORIES
 -- ========================================
-INSERT INTO categories (category_id, name, description, parent_id, created_at, updated_at) VALUES
-('cg-0001', 'Điện tử', 'Các sản phẩm điện tử', NULL, NOW(), NOW()),
-('cg-0002', 'Phương tiện', 'Các loại phương tiện giao thông', NULL, NOW(), NOW()),
-('cg-0003', 'Sản phẩm khác', 'Các sản phẩm khác', NULL, NOW(), NOW());
+INSERT INTO categories (category_id, name, description, parent_id, posting_fee, created_at, updated_at) VALUES
+('cg-0001', 'Điện tử', 'Các sản phẩm điện tử', NULL, 0, NOW(), NOW()),
+('cg-0002', 'Phương tiện', 'Các loại phương tiện giao thông', NULL, 0, NOW(), NOW()),
+('cg-0003', 'Sản phẩm khác', 'Các sản phẩm khác', NULL, 0, NOW(), NOW());
 
 -- ========================================
 -- 2. CHILD CATEGORIES (Điện tử)
 -- ========================================
-INSERT INTO categories (category_id, name, description, parent_id, created_at, updated_at) VALUES
-('cg-0004', 'Điện thoại', 'Điện thoại thông minh', 'cg-0001', NOW(), NOW()),
-('cg-0005', 'Laptop', 'Máy tính xách tay', 'cg-0001', NOW(), NOW()),
-('cg-0006', 'Tivi', 'Tivi, màn hình', 'cg-0001', NOW(), NOW()),
-('cg-0007', 'Âm thanh', 'Loa, tai nghe, dàn âm thanh', 'cg-0001', NOW(), NOW()),
-('cg-0008', 'Máy tính bảng', 'Tablet', 'cg-0001', NOW(), NOW()),
-('cg-0009', 'Máy tính để bàn', 'PC, máy tính để bàn', 'cg-0001', NOW(), NOW()),
-('cg-0010', 'Tủ lạnh', 'Tủ lạnh, tủ mát', 'cg-0001', NOW(), NOW()),
-('cg-0011', 'Máy lạnh', 'Máy lạnh, điều hòa', 'cg-0001', NOW(), NOW()),
-('cg-0012', 'Điều hòa', 'Điều hòa không khí', 'cg-0001', NOW(), NOW()),
-('cg-0013', 'Máy giặt', 'Máy giặt, máy sấy', 'cg-0001', NOW(), NOW());
+INSERT INTO categories (category_id, name, description, parent_id, posting_fee, created_at, updated_at) VALUES
+('cg-0004', 'Điện thoại', 'Điện thoại thông minh', 'cg-0001', 10000, NOW(), NOW()),
+('cg-0005', 'Laptop', 'Máy tính xách tay', 'cg-0001', 15000, NOW(), NOW()),
+('cg-0006', 'Tivi', 'Tivi, màn hình', 'cg-0001', 12000, NOW(), NOW()),
+('cg-0007', 'Âm thanh', 'Loa, tai nghe, dàn âm thanh', 'cg-0001', 8000, NOW(), NOW()),
+('cg-0008', 'Máy tính bảng', 'Tablet', 'cg-0001', 10000, NOW(), NOW()),
+('cg-0009', 'Máy tính để bàn', 'PC, máy tính để bàn', 'cg-0001', 12000, NOW(), NOW()),
+('cg-0010', 'Tủ lạnh', 'Tủ lạnh, tủ mát', 'cg-0001', 20000, NOW(), NOW()),
+('cg-0011', 'Máy lạnh', 'Máy lạnh, điều hòa', 'cg-0001', 20000, NOW(), NOW()),
+('cg-0012', 'Điều hòa', 'Điều hòa không khí', 'cg-0001', 20000, NOW(), NOW()),
+('cg-0013', 'Máy giặt', 'Máy giặt, máy sấy', 'cg-0001', 20000, NOW(), NOW());
 
 -- ========================================
 -- 3. CHILD CATEGORIES (Phương tiện)
 -- ========================================
-INSERT INTO categories (category_id, name, description, parent_id, created_at, updated_at) VALUES
-('cg-0014', 'Xe máy', 'Xe máy, xe tay ga', 'cg-0002', NOW(), NOW()),
-('cg-0015', 'Ô tô', 'Ô tô 4 bánh', 'cg-0002', NOW(), NOW()),
-('cg-0016', 'Xe tải', 'Xe tải các loại', 'cg-0002', NOW(), NOW()),
-('cg-0017', 'Xe ben', 'Xe ben, xe chuyên dụng', 'cg-0002', NOW(), NOW()),
-('cg-0018', 'Xe đạp', 'Xe đạp, xe điện', 'cg-0002', NOW(), NOW()),
-('cg-0019', 'Phương tiện khác', 'Các phương tiện khác', 'cg-0002', NOW(), NOW()),
-('cg-0020', 'Phụ tùng xe', 'Phụ tùng xe máy, ô tô', 'cg-0002', NOW(), NOW());
+INSERT INTO categories (category_id, name, description, parent_id, posting_fee, created_at, updated_at) VALUES
+('cg-0014', 'Xe máy', 'Xe máy, xe tay ga', 'cg-0002', 25000, NOW(), NOW()),
+('cg-0015', 'Ô tô', 'Ô tô 4 bánh', 'cg-0002', 50000, NOW(), NOW()),
+('cg-0016', 'Xe tải', 'Xe tải các loại', 'cg-0002', 30000, NOW(), NOW()),
+('cg-0017', 'Xe ben', 'Xe ben, xe chuyên dụng', 'cg-0002', 30000, NOW(), NOW()),
+('cg-0018', 'Xe đạp', 'Xe đạp, xe điện', 'cg-0002', 5000, NOW(), NOW()),
+('cg-0019', 'Phương tiện khác', 'Các phương tiện khác', 'cg-0002', 10000, NOW(), NOW()),
+('cg-0020', 'Phụ tùng xe', 'Phụ tùng xe máy, ô tô', 'cg-0002', 3000, NOW(), NOW());
 
 -- ========================================
 -- 4. CHILD CATEGORIES (Sản phẩm khác)
 -- ========================================
-INSERT INTO categories (category_id, name, description, parent_id, created_at, updated_at) VALUES
-('cg-0021', 'Thú cưng', 'Chó, mèo và các thú cưng khác', 'cg-0003', NOW(), NOW()),
-('cg-0022', 'Đồ gia dụng', 'Đồ gia dụng, vệ sinh', 'cg-0003', NOW(), NOW()),
-('cg-0023', 'Nội thất', 'Bàn, ghế, tủ, giường', 'cg-0003', NOW(), NOW()),
-('cg-0024', 'Cây cảnh', 'Cây, hoa, cây cảnh', 'cg-0003', NOW(), NOW());
+INSERT INTO categories (category_id, name, description, parent_id, posting_fee, created_at, updated_at) VALUES
+('cg-0021', 'Thú cưng', 'Chó, mèo và các thú cưng khác', 'cg-0003', 8000, NOW(), NOW()),
+('cg-0022', 'Đồ gia dụng', 'Đồ gia dụng, vệ sinh', 'cg-0003', 3000, NOW(), NOW()),
+('cg-0023', 'Nội thất', 'Bàn, ghế, tủ, giường', 'cg-0003', 5000, NOW(), NOW()),
+('cg-0024', 'Cây cảnh', 'Cây, hoa, cây cảnh', 'cg-0003', 2000, NOW(), NOW());
 
 -- ========================================
 -- 5. CATEGORY ATTRIBUTES FOR SMARTPHONE

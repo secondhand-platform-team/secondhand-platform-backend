@@ -23,8 +23,8 @@
         <grpc.spring.boot.starter.version>3.1.0.RELEASE</grpc.spring.boot.starter.version>
     </properties>
 
-    
-    
+
+
     <dependencies>
 
         <!-- Web -->
@@ -97,6 +97,13 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- Gson -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
         </dependency>
 
         <!-- Lombok -->

@@ -8,4 +8,7 @@ import lombok.Getter;
 public class MessageResponse {
     private String message;
     private boolean success;
+
+    public MessageResponse(String paymentCallbackProcessedSuccessfully) {
+    }
 }

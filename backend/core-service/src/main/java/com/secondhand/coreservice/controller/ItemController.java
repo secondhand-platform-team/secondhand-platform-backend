@@ -1,5 +1,6 @@
 package com.secondhand.coreservice.controller;
 
+import java.net.URI;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -8,17 +9,19 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.secondhand.coreservice.dto.request.ItemRequest;
 import com.secondhand.coreservice.dto.request.ItemStatusUpdateRequest;
+import com.secondhand.coreservice.dto.request.VNPayCallbackRequest;
 import com.secondhand.coreservice.dto.response.ItemResponse;
 import com.secondhand.coreservice.dto.response.MessageResponse;
 import com.secondhand.coreservice.service.ItemService;
@@ -38,7 +41,7 @@ public class ItemController {
     private final ItemService itemService;
     private final Validator validator;
 
-    @PostMapping(consumes = { "multipart/form-data" })
+    @PostMapping
     public ResponseEntity<ItemResponse> createItem(
             @RequestPart("item") String itemJson,
             @RequestPart(value = "images", required = false) MultipartFile[] images) {
@@ -140,5 +143,53 @@ public class ItemController {
     public ResponseEntity<List<ItemResponse>> getMyFavoriteItems() {
         List<ItemResponse> items = itemService.getMyFavoriteItems();
         return ResponseEntity.ok(items);
+    }
+
+    @GetMapping("/payment-callback")
+    public ResponseEntity<?> handleVNPayCallback(
+            @RequestParam(required = false) String vnp_Amount,
+            @RequestParam(required = false) String vnp_BankCode,
+            @RequestParam(required = false) String vnp_BankTranNo,
+            @RequestParam(required = false) String vnp_CardType,
+            @RequestParam(required = false) String vnp_OrderInfo,
+            @RequestParam(required = false) String vnp_PayDate,
+            @RequestParam(required = false) String vnp_ResponseCode,
+            @RequestParam(required = false) String vnp_TmnCode,
+            @RequestParam(required = false) String vnp_TransactionNo,
+            @RequestParam(required = false) String vnp_TransactionStatus,
+            @RequestParam(required = false) String vnp_TxnRef,
+            @RequestParam(required = false) String vnp_SecureHash) {
+        try {
+            VNPayCallbackRequest request = VNPayCallbackRequest.builder()
+                    .vnp_Amount(vnp_Amount)
+                    .vnp_BankCode(vnp_BankCode)
+                    .vnp_BankTranNo(vnp_BankTranNo)
+                    .vnp_CardType(vnp_CardType)
+                    .vnp_OrderInfo(vnp_OrderInfo)
+                    .vnp_PayDate(vnp_PayDate)
+                    .vnp_ResponseCode(vnp_ResponseCode)
+                    .vnp_TmnCode(vnp_TmnCode)
+                    .vnp_TransactionNo(vnp_TransactionNo)
+                    .vnp_TransactionStatus(vnp_TransactionStatus)
+                    .vnp_TxnRef(vnp_TxnRef)
+                    .vnp_SecureHash(vnp_SecureHash)
+                    .build();
+
+            itemService.handleVNPayCallback(request);
+
+            // Redirect to frontend success page
+            String successUrl = "http://localhost:3000/payment-success?status=success&transactionId="
+                    + vnp_TransactionNo;
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(successUrl))
+                    .build();
+        } catch (Exception e) {
+            // Redirect to frontend error page
+            String errorUrl = "http://localhost:3000/payment-failed?status=error&message=" +
+                    java.net.URLEncoder.encode(e.getMessage(), java.nio.charset.StandardCharsets.UTF_8);
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(errorUrl))
+                    .build();
+        }
     }
 }

@@ -111,6 +111,7 @@ public class AuthServiceImpl implements AuthService {
                 .status(true)
                 .createdAt(LocalDate.now())
                 .updatedAt(LocalDate.now())
+                .freeSellUsed(2)
                 .build();
 
         // Create user profile
@@ -139,7 +140,9 @@ public class AuthServiceImpl implements AuthService {
                 user.getEmail(),
                 user.getPhoneNumber(),
                 user.getRole().name(),
-                user.isStatus());
+                user.isStatus()
+        , user.getFreeSellUsed());
+
     }
 
     @Override
@@ -152,7 +155,10 @@ public class AuthServiceImpl implements AuthService {
                 user.getEmail(),
                 user.getPhoneNumber(),
                 user.getRole().name(),
-                user.isStatus());
+                user.isStatus(),
+                user.getFreeSellUsed()
+        );
+
 
         UserProfile userProfile = user.getUserProfile();
         UserProfileResponse profileResponse = null;
@@ -178,8 +184,8 @@ public class AuthServiceImpl implements AuthService {
                 user.getEmail(),
                 user.getPhoneNumber(),
                 user.getRole().name(),
-                user.isStatus());
-
+                user.isStatus(),        user.getFreeSellUsed()
+        );
         UserProfile userProfile = user.getUserProfile();
         UserProfileResponse profileResponse = null;
         if (userProfile != null) {
