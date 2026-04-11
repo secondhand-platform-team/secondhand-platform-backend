@@ -33,8 +33,7 @@ public class JwtCookieAuthenticationFilter extends OncePerRequestFilter {
         if (token != null && jwtUtils.validateToken(token)) {
             JwtAuthenticatedUser principal = new JwtAuthenticatedUser(
                     jwtUtils.extractUserId(token),
-                    jwtUtils.extractEmail(token)
-            );
+                    jwtUtils.extractEmail(token));
 
             List<SimpleGrantedAuthority> authorities = jwtUtils.extractRoles(token)
                     .stream()
@@ -43,9 +42,8 @@ public class JwtCookieAuthenticationFilter extends OncePerRequestFilter {
 
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     principal,
-                    null,
-                    authorities
-            );
+                    token,
+                    authorities);
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authentication);
         }

@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.secondhand.coreservice.grpc.payment";
+option java_outer_classname = "PaymentProto";
+
+package payment;
+
+service PaymentGrpcService {
+
+  rpc CreateVnPayPayment (CreatePaymentRequest)
+      returns (CreatePaymentResponse);
+
+  rpc VerifyPaymentCallback (VerifyPaymentRequest)
+      returns (VerifyPaymentResponse);
+
+  rpc GetPaymentStatus (GetPaymentStatusRequest)
+      returns (GetPaymentStatusResponse);
+
+  rpc UpdatePaymentStatus (UpdatePaymentStatusRequest)
+      returns (UpdatePaymentStatusResponse);
+}
+
+
+
+message CreatePaymentRequest {
+  int64 amount = 1;
+  string bankCode = 2;
+  string language = 3;
+  string userId = 4;
+}
+
+message CreatePaymentResponse {
+  string code = 1;
+  string message = 2;
+  string paymentUrl = 3;
+  string transactionId = 4;
+}
+
+
+message VerifyPaymentRequest {
+  string transactionId = 1;
+  string orderId = 2;
+  string responseCode = 3;
+  string secureHash = 4;
+}
+
+message VerifyPaymentResponse {
+  bool isValid = 1;
+  string status = 2;
+  string message = 3;
+}
+
+
+message GetPaymentStatusRequest {
+  string orderId = 1;
+  string paymentId = 2;
+}
+
+message GetPaymentStatusResponse {
+  string paymentId = 1;
+  string orderId = 2;
+  string status = 3;
+  int64 amount = 4;
+  string method = 5;
+  int64 paidAt = 6;
+}
+
+message UpdatePaymentStatusRequest {
+  string transactionId = 1;
+  string status = 2;
+}
+
+message UpdatePaymentStatusResponse {
+  bool success = 1;
+  string message = 2;
+}

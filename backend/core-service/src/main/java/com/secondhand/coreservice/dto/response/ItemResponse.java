@@ -28,4 +28,6 @@ public class ItemResponse {
     private LocalDateTime updatedAt;
     private List<ItemImageResponse> itemImageList;
     private List<ItemAttributeResponse> attributes;
+    private String transactionId;
+    private String paymentUrl;
 }

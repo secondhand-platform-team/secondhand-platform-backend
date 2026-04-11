@@ -72,6 +72,16 @@ public class Item {
 
     private String userId;
 
+    // Transaction ID for payment tracking
+    private String transactionId;
+
+    // Payment URL for VNPay gateway
+    @Column(columnDefinition = "TEXT")
+    private String paymentUrl;
+
+    // Timestamp when payment was initiated for expiry checking (15 minutes)
+    private LocalDateTime paymentInitiatedAt;
+
     // private String ownerId;
 
     @ManyToOne(fetch = FetchType.LAZY)

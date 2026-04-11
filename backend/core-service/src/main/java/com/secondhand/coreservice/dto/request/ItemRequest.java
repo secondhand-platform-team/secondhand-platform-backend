@@ -29,15 +29,24 @@ public class ItemRequest {
     @NotNull(message = "Price is required")
     private BigDecimal price;
 
-    private String condition; 
+    private String condition;
 
-    private String transactionType; 
+    private String transactionType;
 
-    private String status; 
+    private String status;
 
     private LocationRequest location;
 
     private List<ItemImageRequest> itemImageList;
 
     private List<ItemAttributeRequest> attributes;
+
+    // Payment verification fields
+    private String transactionId;
+
+    private String orderId;
+
+    private String responseCode;
+
+    private String secureHash;
 }

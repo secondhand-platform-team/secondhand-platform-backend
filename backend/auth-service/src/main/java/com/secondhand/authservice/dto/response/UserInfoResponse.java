@@ -11,4 +11,5 @@ public class UserInfoResponse {
     private String phoneNumber;
     private String role;
     private boolean status;
+    private int freeSellUse;
 }
