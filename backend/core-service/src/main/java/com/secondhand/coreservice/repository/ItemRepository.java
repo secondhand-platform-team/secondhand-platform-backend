@@ -12,6 +12,8 @@ import com.secondhand.coreservice.model.enums.ItemStatus;
 @Repository
 public interface ItemRepository extends JpaRepository<Item, String> {
     List<Item> findByCategory_CategoryId(String categoryId);
+    List<Item> findByCategory_SlugAndStatus(String slug, ItemStatus status);
+    List<Item> findByCategory_SlugAndStatusIn(String slug, List<ItemStatus> statuses);
 
     List<Item> findByUserId(String userId);
 

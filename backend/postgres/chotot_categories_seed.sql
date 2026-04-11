@@ -53,6 +53,97 @@ ON CONFLICT (category_id) DO UPDATE SET
   description = EXCLUDED.description,
   updated_at = EXCLUDED.updated_at;
 
+-- Seed standardized parent categories (level 1)
+INSERT INTO categories (category_id, slug, name, description, created_at, updated_at, parent_id, posting_fee) VALUES
+  ('cg-1001', 'dich-vu', 'Dich Vu', 'Top-level category', '2026-04-11 08:54:01', '2026-04-11 08:54:01', NULL, 0),
+  ('cg-1002', 'do-dien-tu', 'Do Dien Tu', 'Top-level category', '2026-04-11 08:54:01', '2026-04-11 08:54:01', NULL, 0),
+  ('cg-1003', 'xe-co', 'Xe Co', 'Top-level category', '2026-04-11 08:54:01', '2026-04-11 08:54:01', NULL, 0),
+  ('cg-1004', 'nha-cua-doi-song', 'Nha Cua Doi Song', 'Top-level category', '2026-04-11 08:54:01', '2026-04-11 08:54:01', NULL, 0),
+  ('cg-1005', 'thoi-trang-lam-dep', 'Thoi Trang Lam Dep', 'Top-level category', '2026-04-11 08:54:01', '2026-04-11 08:54:01', NULL, 0),
+  ('cg-1006', 'giai-tri-so-thich', 'Giai Tri So Thich', 'Top-level category', '2026-04-11 08:54:01', '2026-04-11 08:54:01', NULL, 0)
+ON CONFLICT (category_id) DO UPDATE SET
+  slug = EXCLUDED.slug,
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  updated_at = EXCLUDED.updated_at;
+
+-- Assign parent_id for imported categories
+UPDATE categories
+SET parent_id = CASE
+  WHEN category_id IN ('cg-0001', 'cg-0002', 'cg-0003', 'cg-0004') THEN 'cg-1001'
+  WHEN category_id IN ('cg-0007', 'cg-0011', 'cg-0015', 'cg-0016', 'cg-0019', 'cg-0020', 'cg-0031', 'cg-0032') THEN 'cg-1002'
+  WHEN category_id IN ('cg-0023', 'cg-0024', 'cg-0027', 'cg-0037', 'cg-0038', 'cg-0039') THEN 'cg-1003'
+  WHEN category_id IN ('cg-0005', 'cg-0006', 'cg-0008', 'cg-0012', 'cg-0014', 'cg-0017', 'cg-0018', 'cg-0029', 'cg-0033', 'cg-0035') THEN 'cg-1004'
+  WHEN category_id IN ('cg-0013', 'cg-0022', 'cg-0025', 'cg-0026', 'cg-0028', 'cg-0034', 'cg-0036') THEN 'cg-1005'
+  WHEN category_id IN ('cg-0009', 'cg-0010', 'cg-0021', 'cg-0030') THEN 'cg-1006'
+  ELSE parent_id
+END
+WHERE category_id LIKE 'cg-00__';
+
+-- Normalize display names to Vietnamese with diacritics
+UPDATE categories
+SET
+  name = CASE category_id
+    WHEN 'cg-1001' THEN 'Dịch vụ'
+    WHEN 'cg-1002' THEN 'Đồ điện tử'
+    WHEN 'cg-1003' THEN 'Xe cộ'
+    WHEN 'cg-1004' THEN 'Nhà cửa & đời sống'
+    WHEN 'cg-1005' THEN 'Thời trang & làm đẹp'
+    WHEN 'cg-1006' THEN 'Giải trí & sở thích'
+    WHEN 'cg-0001' THEN 'Dịch vụ chuyển nhà'
+    WHEN 'cg-0002' THEN 'Dịch vụ dọn dẹp nhà'
+    WHEN 'cg-0003' THEN 'Dịch vụ nhà cửa khác'
+    WHEN 'cg-0004' THEN 'Dịch vụ sửa chữa, bảo dưỡng điện máy'
+    WHEN 'cg-0005' THEN 'Bếp, lò, đồ điện nhà bếp'
+    WHEN 'cg-0006' THEN 'Cây cảnh, đồ trang trí'
+    WHEN 'cg-0007' THEN 'Điện thoại'
+    WHEN 'cg-0008' THEN 'Đồ gia dụng, nội thất, cây cảnh'
+    WHEN 'cg-0009' THEN 'Đồ sưu tầm, đồ cổ'
+    WHEN 'cg-0010' THEN 'Đồ thể thao, dã ngoại'
+    WHEN 'cg-0011' THEN 'Đồng hồ'
+    WHEN 'cg-0012' THEN 'Dụng cụ nhà bếp'
+    WHEN 'cg-0013' THEN 'Giày dép'
+    WHEN 'cg-0014' THEN 'Giường, chăn ga, gối nệm'
+    WHEN 'cg-0015' THEN 'Linh kiện'
+    WHEN 'cg-0016' THEN 'Máy ảnh, máy quay'
+    WHEN 'cg-0017' THEN 'Máy giặt'
+    WHEN 'cg-0018' THEN 'Máy lạnh, điều hòa'
+    WHEN 'cg-0019' THEN 'Máy tính bảng'
+    WHEN 'cg-0020' THEN 'Máy tính để bàn'
+    WHEN 'cg-0021' THEN 'Nhạc cụ'
+    WHEN 'cg-0022' THEN 'Nước hoa'
+    WHEN 'cg-0023' THEN 'Ô tô'
+    WHEN 'cg-0024' THEN 'Ô tô điện'
+    WHEN 'cg-0025' THEN 'Phụ kiện'
+    WHEN 'cg-0026' THEN 'Phụ kiện thời trang khác'
+    WHEN 'cg-0027' THEN 'Phụ tùng xe'
+    WHEN 'cg-0028' THEN 'Quần áo'
+    WHEN 'cg-0029' THEN 'Quạt'
+    WHEN 'cg-0030' THEN 'Sở thích khác'
+    WHEN 'cg-0031' THEN 'Thiết bị chơi game'
+    WHEN 'cg-0032' THEN 'Thiết bị đeo thông minh'
+    WHEN 'cg-0033' THEN 'Thiết bị vệ sinh nhà tắm'
+    WHEN 'cg-0034' THEN 'Thời trang, đồ dùng cá nhân'
+    WHEN 'cg-0035' THEN 'Tủ lạnh'
+    WHEN 'cg-0036' THEN 'Túi xách'
+    WHEN 'cg-0037' THEN 'Xe đạp'
+    WHEN 'cg-0038' THEN 'Xe máy'
+    WHEN 'cg-0039' THEN 'Xe máy điện'
+    ELSE name
+  END,
+  description = CASE
+    WHEN category_id LIKE 'cg-%' THEN 'Danh mục được nhập từ chotot_items_final.json'
+    ELSE description
+  END,
+  updated_at = '2026-04-11 08:54:01'
+WHERE category_id IN (
+  'cg-1001', 'cg-1002', 'cg-1003', 'cg-1004', 'cg-1005', 'cg-1006',
+  'cg-0001', 'cg-0002', 'cg-0003', 'cg-0004', 'cg-0005', 'cg-0006', 'cg-0007', 'cg-0008', 'cg-0009', 'cg-0010',
+  'cg-0011', 'cg-0012', 'cg-0013', 'cg-0014', 'cg-0015', 'cg-0016', 'cg-0017', 'cg-0018', 'cg-0019', 'cg-0020',
+  'cg-0021', 'cg-0022', 'cg-0023', 'cg-0024', 'cg-0025', 'cg-0026', 'cg-0027', 'cg-0028', 'cg-0029', 'cg-0030',
+  'cg-0031', 'cg-0032', 'cg-0033', 'cg-0034', 'cg-0035', 'cg-0036', 'cg-0037', 'cg-0038', 'cg-0039'
+);
+
 INSERT INTO category_attributes (attribute_id, category_id, code, slug, name, description, data_type, unit, required, filterable, searchable, min_value_number, max_value_number, options_json, sort_order, created_at, updated_at) VALUES
   ('at-0001', 'cg-0001', 'condition', 'condition', 'Condition', 'Item condition', 'ENUM', NULL, false, true, false, NULL, NULL, '["NEW","LIKE_NEW","USED"]', 1, '2026-04-11 08:54:01', '2026-04-11 08:54:01'),
   ('at-0002', 'cg-0001', 'brand', 'brand', 'Brand', 'Brand or manufacturer', 'STRING', NULL, false, true, true, NULL, NULL, NULL, 2, '2026-04-11 08:54:01', '2026-04-11 08:54:01'),

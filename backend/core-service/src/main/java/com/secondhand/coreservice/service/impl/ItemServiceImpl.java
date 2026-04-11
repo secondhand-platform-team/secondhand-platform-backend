@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Arrays;
 
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -332,6 +333,20 @@ public class ItemServiceImpl implements ItemService {
         }
         List<Item> items = itemRepository.findByCategory_CategoryId(categoryId);
         return items.stream()
+                .map(this::mapToItemResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ItemResponse> getItemsByCategorySlug(String slug) {
+        if (!categoryRepository.existsBySlug(slug)) {
+            throw new ResourceNotFoundException("Category not found with slug: " + slug);
+        }
+
+        return itemRepository.findByCategory_SlugAndStatusIn(
+                slug,
+                Arrays.asList(ItemStatus.ACTIVE, ItemStatus.AVAILABLE)).stream()
                 .map(this::mapToItemResponse)
                 .collect(Collectors.toList());
     }
