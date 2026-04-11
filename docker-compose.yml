@@ -88,6 +88,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/secondhand_core_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      ORDER_SERVICE_GRPC_ADDRESS: static://order-service:9093
+      CHAT_SERVICE_GRPC_ADDRESS: static://chat-service:9094
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
       SPRING_RABBITMQ_HOST: rabbitmq

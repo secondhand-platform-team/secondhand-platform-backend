@@ -181,6 +181,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://ktpm-postgres:5432/secondhand_core_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      ORDER_SERVICE_GRPC_ADDRESS: static://order-service:9093
+      CHAT_SERVICE_GRPC_ADDRESS: static://chat-service:9094
     develop:
       watch:
         - action: sync+restart
@@ -191,6 +193,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      order-service:
+        condition: service_started
+      chat-service:
+        condition: service_started
     networks:
       - secondhand
     restart: unless-stopped
