@@ -139,10 +139,9 @@ services:
         condition: service_healthy
     networks:
       - secondhand
-
     # =========================
-  # CHAT SERVICE
-  # =========================
+    # CHAT SERVICE
+    # =========================
   chat-service:
     image: eclipse-temurin:21-jdk
     container_name: ktpm-chat-service

@@ -138,8 +138,8 @@ services:
       dockerfile: Dockerfile.dev
     container_name: ktpm-auth-service
     volumes:
-      - ./backend/auth-service:/app          # mount toàn bộ source vào container
-      - maven-repo:/root/.m2                 # cache Maven deps dùng chung
+      - ./backend/auth-service:/app # mount toàn bộ source vào container
+      - maven-repo:/root/.m2 # cache Maven deps dùng chung
     ports:
       - "8081:8081"
     environment:
@@ -266,11 +266,9 @@ networks:
   secondhand:
     driver: bridge
 
-
-
 volumes:
   postgres_data:
   redis_data:
   mongodb_data:
   rabbitmq_data:
-  maven-repo:          # shared Maven cache — tải deps 1 lần, tất cả service dùng chung
+  maven-repo: # shared Maven cache — tải deps 1 lần, tất cả service dùng chung
