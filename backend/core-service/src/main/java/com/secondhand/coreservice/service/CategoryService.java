@@ -32,6 +32,13 @@ public interface CategoryService {
     List<CategoryResponse> getAllCategories();
 
     /**
+     * Retrieve top-level categories (no parent).
+     *
+     * @return list of root categories for homepage navigation
+     */
+    List<CategoryResponse> getTopLevelCategories();
+
+    /**
      * Update an existing category.
      *
      * @param categoryId unique category identifier
@@ -39,6 +46,14 @@ public interface CategoryService {
      * @return updated category; throws ResourceNotFoundException if not found
      */
     CategoryResponse updateCategory(String categoryId, CategoryRequest request);
+
+    /**
+     * Retrieve category by slug.
+     *
+     * @param slug category slug
+     * @return category details; throws ResourceNotFoundException if not found
+     */
+    CategoryResponse getCategoryBySlug(String slug);
 
     /**
      * Delete a category.
@@ -58,6 +73,14 @@ public interface CategoryService {
      * @return list of child categories; empty list if no children exist
      */
     List<CategoryResponse> getCategoryChildren(String parentCategoryId);
+
+    /**
+     * Retrieve child categories by parent slug.
+     *
+     * @param parentSlug parent category slug
+     * @return list of child categories
+     */
+    List<CategoryResponse> getCategoryChildrenBySlug(String parentSlug);
 
     /**
      * Retrieve all custom attributes defined for a category.

@@ -99,6 +99,12 @@ public class ItemController {
         return ResponseEntity.ok(items);
     }
 
+    @GetMapping("/category/slug/{slug}")
+    public ResponseEntity<List<ItemResponse>> getItemsByCategorySlug(@PathVariable String slug) {
+        List<ItemResponse> items = itemService.getItemsByCategorySlug(slug);
+        return ResponseEntity.ok(items);
+    }
+
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<ItemResponse>> getItemsByUser(@PathVariable String userId) {
         List<ItemResponse> items = itemService.getItemsByUser(userId);

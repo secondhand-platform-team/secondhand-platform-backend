@@ -43,14 +43,38 @@ public class CategoryController {
         return ResponseEntity.ok(categories);
     }
 
+    @GetMapping("/top-level")
+    public ResponseEntity<List<CategoryResponse>> getTopLevelCategories() {
+        List<CategoryResponse> categories = categoryService.getTopLevelCategories();
+        return ResponseEntity.ok(categories);
+    }
+
+    @GetMapping("/slug/{slug}")
+    public ResponseEntity<CategoryResponse> getCategoryBySlug(@PathVariable String slug) {
+        CategoryResponse category = categoryService.getCategoryBySlug(slug);
+        return ResponseEntity.ok(category);
+    }
+
+    @GetMapping("/slug/{slug}/children")
+    public ResponseEntity<List<CategoryResponse>> getCategoryChildrenBySlug(@PathVariable String slug) {
+        List<CategoryResponse> children = categoryService.getCategoryChildrenBySlug(slug);
+        return ResponseEntity.ok(children);
+    }
+
     @GetMapping("/{categoryId}")
     public ResponseEntity<CategoryResponse> getCategoryById(@PathVariable String categoryId) {
         CategoryResponse category = categoryService.getCategoryById(categoryId);
         return ResponseEntity.ok(category);
     }
 
-    @GetMapping("/{categoryId}/parents")
+    @GetMapping("/{categoryId}/children")
     public ResponseEntity<List<CategoryResponse>> getCategoryChildren(@PathVariable String categoryId) {
+        List<CategoryResponse> children = categoryService.getCategoryChildren(categoryId);
+        return ResponseEntity.ok(children);
+    }
+
+    @GetMapping("/{categoryId}/parents")
+    public ResponseEntity<List<CategoryResponse>> getCategoryChildrenLegacy(@PathVariable String categoryId) {
         List<CategoryResponse> children = categoryService.getCategoryChildren(categoryId);
         return ResponseEntity.ok(children);
     }

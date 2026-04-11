@@ -36,6 +36,9 @@ public class Category {
 
     private String name;
 
+    @Column(unique = true)
+    private String slug;
+
     private String description;
 
     @Column(nullable = false, updatable = false)

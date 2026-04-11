@@ -24,6 +24,8 @@ public interface ItemService {
 
     List<ItemResponse> getItemsByCategory(String categoryId);
 
+    List<ItemResponse> getItemsByCategorySlug(String slug);
+
     List<ItemResponse> getItemsByUser(String userId);
 
     ItemResponse updateItem(String itemId, ItemRequest request);

@@ -14,9 +14,10 @@ import lombok.NoArgsConstructor;
 public class CategoryResponse {
     private String categoryId;
     private String name;
+    private String slug;
     private String description;
     private String parentId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Long postingFee;
-    }
+}
