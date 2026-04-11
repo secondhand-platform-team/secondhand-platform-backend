@@ -6,18 +6,25 @@
   <component name="ChangeListManager">
     <list default="true" id="cab010ba-2181-44b7-98be-ede554d919d4" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/auth-service/src/main/java/com/secondhand/authservice/controller/AuthController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/auth-service/src/main/java/com/secondhand/authservice/controller/AuthController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/auth-service/src/main/java/com/secondhand/authservice/security/JwtAuthenticationFilter.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/auth-service/src/main/java/com/secondhand/authservice/security/JwtAuthenticationFilter.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/auth-service/src/main/java/com/secondhand/authservice/service/AuthService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/auth-service/src/main/java/com/secondhand/authservice/service/AuthService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/auth-service/src/main/java/com/secondhand/authservice/service/impl/AuthServiceImpl.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/auth-service/src/main/java/com/secondhand/authservice/service/impl/AuthServiceImpl.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
+  <component name="EmbeddingIndexingInfo">
+    <option name="cachedIndexableFilesCount" value="719" />
+  </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="KubernetesApiPersistence"><![CDATA[{}]]></component>
+  <component name="KubernetesApiProvider"><![CDATA[{
+  "isMigrated": true
+}]]></component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
   </component>
   <component name="ProjectColorInfo">{
   &quot;customColor&quot;: &quot;&quot;,
@@ -31,19 +38,23 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.MCP Project settings loaded": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
     "git-widget-placeholder": "main",
     "ignore.virus.scanning.warn.message": "true",
     "junie.onboarding.icon.badge.shown": "true",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "D:/Me/Study/HK1_Nam4/WWW/baitaplon/DHKTPM18B_Nhom05_Website_GioiThieu_BanSach_TrucTuyen_Backend",
+    "last_opened_file_path": "J:/NAM_4/NAM_4_HK2/KIEN TRUC PHAN MEM/BTLON/secondhand-platform-backend",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "reference.projectsettings.compiler.javacompiler",
+    "settings.editor.selected.configurable": "advanced.settings",
     "to.speed.mode.migration.done": "true",
     "ts.external.directory.path": "C:\\Program Files\\JetBrains\\IntelliJ IDEA 2024.3.1.1\\plugins\\javascript-plugin\\jsLanguageServicesImpl\\external",
     "vue.rearranger.settings.migration": "true"
@@ -70,6 +81,7 @@
       <workItem from="1773035288712" duration="5729000" />
       <workItem from="1773043598273" duration="285000" />
       <workItem from="1773043901315" duration="543000" />
+      <workItem from="1775123609867" duration="82000" />
     </task>
     <servers />
   </component>
