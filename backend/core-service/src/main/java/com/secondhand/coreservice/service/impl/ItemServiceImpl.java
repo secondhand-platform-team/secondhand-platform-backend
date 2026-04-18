@@ -346,7 +346,7 @@ public class ItemServiceImpl implements ItemService {
 
         return itemRepository.findByCategory_SlugAndStatusIn(
                 slug,
-                Arrays.asList(ItemStatus.ACTIVE, ItemStatus.AVAILABLE)).stream()
+                Arrays.asList(ItemStatus.ACTIVE)).stream()
                 .map(this::mapToItemResponse)
                 .collect(Collectors.toList());
     }
