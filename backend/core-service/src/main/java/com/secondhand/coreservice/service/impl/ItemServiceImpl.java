@@ -157,13 +157,35 @@ public class ItemServiceImpl implements ItemService {
         // Lấy userId từ JWT token (SecurityContext)
         String userId = getCurrentUserId();
 
-        // Determine if this is a SELL or GIVE_AWAY transaction
-        boolean isGiveAway = request.getTransactionType() != null &&
-                "GIVE_AWAY".equalsIgnoreCase(request.getTransactionType());
+        // Determine if this is a SELL, GIVE_AWAY, or FREE_SELL transaction
+        String transactionType = request.getTransactionType();
+        boolean isGiveAway = transactionType != null && "GIVE_AWAY".equalsIgnoreCase(transactionType);
+        boolean isFreeSell = transactionType != null && "FREE_SELL".equalsIgnoreCase(transactionType);
+        boolean isSell = transactionType != null && "SELL".equalsIgnoreCase(transactionType);
 
-        // For SELL items, verify payment if provided
-        if (!isGiveAway) {
-            verifyPaymentBeforeCreatingItem(request);
+        // For SELL items, check if user can post for free or needs payment
+        if (isSell) {
+            // Check if user has free sell slots available
+            try {
+                int freeSellUsed = userServiceClient.getFreeSellUsed(userId);
+
+                if (freeSellUsed > 0) {
+                    // User can post for free
+                    log.info("User {} has {} free sell uses available, allowing free posting", userId, freeSellUsed);
+                    // Change transaction type to FREE_SELL so item will be ACTIVE directly
+                    transactionType = "FREE_SELL";
+                    isFreeSell = true;
+                    isSell = false;
+                } else {
+                    // User has no free slots, must pay
+                    log.info("User {} has no free sell uses, payment verification required", userId);
+                    verifyPaymentBeforeCreatingItem(request);
+                }
+            } catch (Exception e) {
+                log.error("Error checking free sell uses for user: {}", userId, e);
+                // Fall back to payment verification if we can't check free uses
+                verifyPaymentBeforeCreatingItem(request);
+            }
         }
 
         // Validate category exists
@@ -175,12 +197,12 @@ public class ItemServiceImpl implements ItemService {
             throw new BadRequestException("Price is required");
         }
 
-        if (isGiveAway) {
-            // GIVE_AWAY: price can be 0 or any positive value
+        if (isGiveAway || isFreeSell) {
+            // GIVE_AWAY/FREE_SELL: price can be 0 or any positive value
             if (request.getPrice().signum() < 0) {
                 throw new BadRequestException("Price cannot be negative");
             }
-        } else {
+        } else if (isSell) {
             // SELL: price must be greater than 0
             if (request.getPrice().signum() <= 0) {
                 throw new BadRequestException("Price must be greater than 0 for SELL items");
@@ -188,9 +210,9 @@ public class ItemServiceImpl implements ItemService {
         }
 
         // Determine initial status based on transaction type
-        // GIVE_AWAY: Direct ACTIVE (no payment needed)
+        // GIVE_AWAY/FREE_SELL: Direct ACTIVE (no payment needed)
         // SELL: DRAFT (waiting for payment)
-        ItemStatus initialStatus = isGiveAway ? ItemStatus.ACTIVE : ItemStatus.DRAFT;
+        ItemStatus initialStatus = (isGiveAway || isFreeSell) ? ItemStatus.ACTIVE : ItemStatus.DRAFT;
 
         // Create item
         Item item = Item.builder()
@@ -200,11 +222,11 @@ public class ItemServiceImpl implements ItemService {
                 .price(request.getPrice())
                 .condition(request.getCondition() != null ? ItemCondition.valueOf(request.getCondition()) : null)
                 .transactionType(
-                        request.getTransactionType() != null ? TransactionType.valueOf(request.getTransactionType())
+                        transactionType != null ? TransactionType.valueOf(transactionType)
                                 : null)
                 .status(initialStatus)
                 .userId(userId)
-                .paymentInitiatedAt(isGiveAway ? null : LocalDateTime.now())
+                .paymentInitiatedAt((isSell) ? LocalDateTime.now() : null)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -263,8 +285,20 @@ public class ItemServiceImpl implements ItemService {
             savedItem.setAttributeValues(attributeValues);
         }
 
-        // Only create payment for SELL items
-        if (!isGiveAway) {
+        // Handle FREE_SELL: decrement free sell uses
+        if (isFreeSell) {
+            try {
+                log.info("Decrementing free sell use for user: {}", userId);
+                userServiceClient.decrementFreeSellUse(userId);
+                log.info("Free sell use decremented successfully for user: {}", userId);
+            } catch (Exception e) {
+                log.error("Error decrementing free sell use for user: {}", userId, e);
+                // Continue anyway - item was already created
+            }
+        }
+
+        // Only create payment for SELL items (not FREE_SELL or GIVE_AWAY)
+        if (isSell) {
             try {
                 log.info("Creating payment for SELL item: {} with userId: {}", savedItem.getItemId(), userId);
 
@@ -292,7 +326,7 @@ public class ItemServiceImpl implements ItemService {
                 throw new BadRequestException("Failed to create payment: " + e.getMessage());
             }
         } else {
-            log.info("GIVE_AWAY item created directly as ACTIVE - no payment needed");
+            log.info("Item created directly as ACTIVE - no payment needed (type: {})", transactionType);
         }
 
         return mapToItemResponse(savedItem);
@@ -776,14 +810,6 @@ public class ItemServiceImpl implements ItemService {
                 log.info("Payment status updated to PAID for paymentId: {}", targetItem.getTransactionId());
             } catch (Exception ex) {
                 log.warn("Failed to update payment status in order-service", ex);
-            }
-
-            // Decrease free sell use count for the seller in auth-service
-            try {
-                userServiceClient.decrementFreeSellUse(targetItem.getUserId());
-                log.info("Free sell use count decreased for user: {}", targetItem.getUserId());
-            } catch (Exception ex) {
-                log.warn("Failed to decrease free sell use count for user: {}", targetItem.getUserId(), ex);
             }
 
             log.info("Item {} activated after successful payment", targetItem.getItemId());
