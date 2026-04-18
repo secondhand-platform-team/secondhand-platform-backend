@@ -35,7 +35,8 @@ public class AuthController {
                 UserProfileInfoResponse profile = authService.getCurrentUserProfile(request.getEmail());
 
                 return ResponseEntity.ok()
-                                .header(HttpHeaders.SET_COOKIE, authCookieUtils.createAccessTokenCookie(accessToken).toString())
+                                .header(HttpHeaders.SET_COOKIE,
+                                                authCookieUtils.createAccessTokenCookie(accessToken).toString())
                                 .body(profile);
         }
 
@@ -46,10 +47,10 @@ public class AuthController {
                 UserProfileInfoResponse profile = authService.getCurrentUserProfile(request.getEmail());
 
                 return ResponseEntity.ok()
-                                .header(HttpHeaders.SET_COOKIE, authCookieUtils.createAccessTokenCookie(accessToken).toString())
+                                .header(HttpHeaders.SET_COOKIE,
+                                                authCookieUtils.createAccessTokenCookie(accessToken).toString())
                                 .body(profile);
         }
-
 
         @PostMapping("/register/user")
         public ResponseEntity<MessageResponse> registerUser(
@@ -69,7 +70,7 @@ public class AuthController {
 
         @GetMapping("/me")
         public ResponseEntity<UserInfoResponse> getCurrentUser() {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
                 String email = authentication.getName();
                 UserInfoResponse userInfo = authService.getCurrentUser(email);
                 return ResponseEntity.ok(userInfo);
@@ -99,10 +100,17 @@ public class AuthController {
                                 .header(HttpHeaders.SET_COOKIE, authCookieUtils.clearAccessTokenCookie().toString())
                                 .body(MessageResponse.success("Đăng xuất thành công"));
         }
+
         @PutMapping("/users/{userId}/free-sell-use/decrease")
         public ResponseEntity<Void> decreaseFreeSellUse(@PathVariable String userId) {
                 userService.decreaseFreeSellUse(userId);
                 return ResponseEntity.ok().build();
+        }
+
+        @GetMapping("/users/{userId}/free-sell-use")
+        public ResponseEntity<Integer> getFreeSellUsed(@PathVariable String userId) {
+                int freeSellUsed = userService.getFreeSellUsed(userId);
+                return ResponseEntity.ok(freeSellUsed);
         }
 
 }

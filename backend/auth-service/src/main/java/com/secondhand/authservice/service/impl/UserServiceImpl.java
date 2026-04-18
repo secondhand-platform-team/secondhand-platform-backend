@@ -11,7 +11,9 @@ import org.springframework.stereotype.Service;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-    public boolean decreaseFreeSellUse(String userId){
+
+    @Override
+    public boolean decreaseFreeSellUse(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         int freeSellUse = user.getFreeSellUsed();
@@ -25,5 +27,11 @@ public class UserServiceImpl implements UserService {
         return true;
     }
 
+    @Override
+    public int getFreeSellUsed(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return user.getFreeSellUsed();
+    }
 
 }
