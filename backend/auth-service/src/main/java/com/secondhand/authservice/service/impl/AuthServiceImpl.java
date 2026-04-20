@@ -2,6 +2,7 @@ package com.secondhand.authservice.service.impl;
 
 import com.secondhand.authservice.dto.request.LoginRequest;
 import com.secondhand.authservice.dto.request.RegisterRequest;
+import com.secondhand.authservice.dto.request.UpdateProfileRequest;
 import com.secondhand.authservice.dto.response.AuthResponse;
 import com.secondhand.authservice.dto.response.MessageResponse;
 import com.secondhand.authservice.dto.response.UserInfoResponse;
@@ -9,11 +10,14 @@ import com.secondhand.authservice.dto.response.UserProfileInfoResponse;
 import com.secondhand.authservice.dto.response.UserProfileResponse;
 import com.secondhand.authservice.exception.BadRequestException;
 import com.secondhand.authservice.grpc.CartGrpcClient;
+import com.secondhand.authservice.model.RefreshToken;
 import com.secondhand.authservice.model.User;
 import com.secondhand.authservice.model.UserProfile;
 import com.secondhand.authservice.model.enums.Role;
 import com.secondhand.authservice.repository.UserRepository;
 import com.secondhand.authservice.service.AuthService;
+import com.secondhand.authservice.service.CloudinaryService;
+import com.secondhand.authservice.service.RefreshTokenService;
 import com.secondhand.authservice.utils.JwtUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,7 +27,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -36,11 +42,8 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
     private final CartGrpcClient cartGrpcClient;
-
-    @Override
-    public AuthResponse login(LoginRequest request) {
-        return loginByRole(request, Role.USER);
-    }
+    private final CloudinaryService cloudinaryService;
+    private final RefreshTokenService refreshTokenService;
 
     @Override
     public AuthResponse loginByRole(LoginRequest request, Role requiredRole) {
@@ -59,15 +62,11 @@ public class AuthServiceImpl implements AuthService {
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
 
-        String token = jwtUtils.generateToken(userDetails, user.getUserId());
+        String accessToken = jwtUtils.generateToken(userDetails, user.getUserId());
 
-        return new AuthResponse(token, "Bearer");
-    }
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
 
-    @Override
-    @Transactional
-    public MessageResponse register(RegisterRequest request) {
-        return registerUser(request);
+        return new AuthResponse(accessToken, refreshToken.getToken(), "Bearer");
     }
 
     @Override
@@ -198,5 +197,53 @@ public class AuthServiceImpl implements AuthService {
         }
 
         return new UserProfileInfoResponse(userInfo, profileResponse);
+    }
+
+    @Override
+    @Transactional
+    public UserProfileInfoResponse updateProfile(String email, UpdateProfileRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+
+        // Update phone number on User entity
+        if (request.getPhoneNumber() != null && !request.getPhoneNumber().isBlank()) {
+            user.setPhoneNumber(request.getPhoneNumber());
+        }
+
+        // Update or create UserProfile
+        UserProfile userProfile = user.getUserProfile();
+        if (userProfile == null) {
+            userProfile = new UserProfile();
+            userProfile.setUser(user);
+            user.setUserProfile(userProfile);
+        }
+
+        if (request.getFullName() != null) userProfile.setFullName(request.getFullName());
+        if (request.getBio() != null) userProfile.setBio(request.getBio());
+        if (request.getGender() != null) userProfile.setGender(request.getGender());
+        if (request.getDateOfBirth() != null) userProfile.setDateOfBirth(request.getDateOfBirth());
+
+        userRepository.save(user);
+        return getCurrentUserProfile(email);
+    }
+
+    @Override
+    @Transactional
+    public UserProfileInfoResponse updateAvatar(String email, MultipartFile file) throws IOException {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+
+        String avatarUrl = cloudinaryService.uploadImage(file);
+
+        UserProfile userProfile = user.getUserProfile();
+        if (userProfile == null) {
+            userProfile = new UserProfile();
+            userProfile.setUser(user);
+            user.setUserProfile(userProfile);
+        }
+        userProfile.setAvatarUrl(avatarUrl);
+
+        userRepository.save(user);
+        return getCurrentUserProfile(email);
     }
 }

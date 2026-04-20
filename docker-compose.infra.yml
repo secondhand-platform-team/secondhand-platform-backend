@@ -1,0 +1,140 @@
+# Docker Compose chỉ chạy INFRA services
+# Dùng khi muốn chạy các Spring Boot service bằng IntelliJ (local)
+# Kong sẽ trỏ đến host.docker.internal để proxy đến service chạy local
+#
+# Cách dùng:
+#   docker compose -f docker-compose.infra.yml up -d
+#
+# Sau đó chạy từng service trong IntelliJ bình thường.
+# Truy cập qua Kong: http://localhost:8000/auth, /core, /order, /chat
+
+services:
+
+  # =========================
+  # KONG API GATEWAY (trỏ tới local services qua host.docker.internal)
+  # =========================
+  kong:
+    image: kong:latest
+    container_name: ktpm-kong
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+      - "8443:8443"
+      - "8001:8001"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+      # Allow file uploads up to 20MB through the gateway
+      KONG_NGINX_PROXY_CLIENT_MAX_BODY_SIZE: "20m"
+    volumes:
+      - ./gateway/kong/kong.local.yml:/var/lib/kong/kong.yml:ro
+    networks:
+      - secondhand
+    healthcheck:
+      test: [ "CMD", "kong", "health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # =========================
+  # POSTGRESQL
+  # =========================
+  postgres:
+    image: postgres:16-alpine
+    container_name: ktpm-postgres
+    restart: unless-stopped
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: secondhand_auth_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - secondhand
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =========================
+  # REDIS
+  # =========================
+  redis:
+    image: redis:7-alpine
+    container_name: ktpm-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - secondhand
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # =========================
+  # MONGODB
+  # =========================
+  mongodb:
+    image: mongo:6.0
+    container_name: ktpm-mongodb
+    restart: unless-stopped
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - secondhand
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =========================
+  # RABBITMQ
+  # =========================
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: ktpm-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+      RABBITMQ_DEFAULT_VHOST: /
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - secondhand
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  secondhand:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  mongodb_data:
+  rabbitmq_data:

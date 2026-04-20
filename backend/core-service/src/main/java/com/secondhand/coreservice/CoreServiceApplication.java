@@ -11,11 +11,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class CoreServiceApplication {
 
     public static void main(String[] args) {
-        System.out.println("VẬy là xong rồi sao?");
         SpringApplication.run(CoreServiceApplication.class, args);
-        System.out.println("hahahhahaahah");
-        System.out.println("xin chao");
-
+        System.out.println("Core Service is running...");
     }
 
 }

@@ -23,6 +23,8 @@ services:
       KONG_ADMIN_ERROR_LOG: /dev/stderr
       KONG_ADMIN_LISTEN: 0.0.0.0:8001
       KONG_PROXY_LISTEN: 0.0.0.0:8000
+      # Allow file uploads up to 20MB through the gateway
+      KONG_NGINX_PROXY_CLIENT_MAX_BODY_SIZE: "20m"
     volumes:
       - ./gateway/kong/kong.yml:/var/lib/kong/kong.yml:ro
     depends_on:

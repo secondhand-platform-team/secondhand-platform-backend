@@ -179,3 +179,12 @@ docker compose -f docker-compose.dev.yml exec redis redis-cli
 
 # chạy lại init.sql để khởi tạo lại database:
 Get-Content backend/postgres/init.sql | docker exec -i ktpm-postgres psql -U postgres
+
+# Cách chạy Hybrid (IntelliJ + Docker)
+# Bước 1 — Khởi động infra trên Docker:
+docker compose -f docker-compose.infra.yml up -d
+
+
+# Lệnh này chỉ chạy: Kong (port 8000), PostgreSQL (5435), Redis (6379), MongoDB (27019), RabbitMQ (5672/15672).
+
+# Bước 2 — Chạy từng service trong IntelliJ bình thường (Run/Debug từng module). Không cần set thêm env var nào vì các application.properties đã có default đúng cho local:
