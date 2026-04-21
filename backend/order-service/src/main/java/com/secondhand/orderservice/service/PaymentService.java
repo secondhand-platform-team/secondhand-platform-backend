@@ -7,6 +7,8 @@ import jakarta.servlet.http.HttpServletRequest;
 public interface PaymentService {
     PaymentResponse createVnPayPayment(CreatePaymentRequest request, HttpServletRequest httpRequest);
 
+    PaymentResponse createVnPayPaymentInternal(Long amount, String bankCode, String language, String userId);
+
     String handleVnPayReturn(HttpServletRequest request);
 
     Boolean verifyVnPayCallback(HttpServletRequest request);

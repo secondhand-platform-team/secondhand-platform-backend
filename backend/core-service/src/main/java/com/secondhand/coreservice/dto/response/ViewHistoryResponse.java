@@ -19,7 +19,7 @@ import lombok.Setter;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ViewHistoryResponse {
 
-    private Long id;
+    private String id;
 
     @JsonProperty("itemId")
     private String itemId;

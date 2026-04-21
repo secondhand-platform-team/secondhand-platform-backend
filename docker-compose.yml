@@ -52,8 +52,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/secondhand_auth_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
-      ORDER_SERVICE_GRPC_ADDRESS: static://order-service:9093
-      CHAT_SERVICE_GRPC_ADDRESS: static://chat-service:9094
+      ORDER_SERVICE_URL: http://order-service:8083
+      CHAT_SERVICE_URL: http://chat-service:8084
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
       SPRING_RABBITMQ_HOST: rabbitmq
@@ -88,6 +88,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/secondhand_core_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      ORDER_SERVICE_URL: http://order-service:8083
       ORDER_SERVICE_GRPC_ADDRESS: static://order-service:9093
       CHAT_SERVICE_GRPC_ADDRESS: static://chat-service:9094
       SPRING_REDIS_HOST: redis
@@ -116,7 +117,6 @@ services:
     command: ./mvnw spring-boot:run
     ports:
       - "8083:8083"
-      - "9093:9093"
     environment:
       SPRING_APPLICATION_NAME: order-service
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/secondhand_order_db
@@ -151,7 +151,6 @@ services:
     command: ./mvnw spring-boot:run
     ports:
       - "8084:8084"
-      - "9094:9094"
     environment:
       SPRING_APPLICATION_NAME: chat-service
       SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/secondhand_chat_db

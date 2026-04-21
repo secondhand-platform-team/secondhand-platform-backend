@@ -1,7 +1,9 @@
 package com.secondhand.coreservice.service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.secondhand.coreservice.dto.request.ItemRequest;
@@ -20,13 +22,33 @@ public interface ItemService {
 
     List<ItemResponse> getAllItems();
 
+    Page<ItemResponse> getAllItemsPaginated(int page, int size, String sort);
+
     List<ItemResponse> getMyItems();
+
+    Page<ItemResponse> getMyItemsPaginated(int page, int size);
 
     List<ItemResponse> getItemsByCategory(String categoryId);
 
     List<ItemResponse> getItemsByCategorySlug(String slug);
 
     List<ItemResponse> getItemsByUser(String userId);
+
+    Page<ItemResponse> searchItems(
+            String keyword,
+            String categoryId,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            String condition,
+            String transactionType,
+            String city,
+            String district,
+            String ward,
+            int page,
+            int size,
+            String sort);
+
+    List<ItemResponse> getFeaturedItems(int limit);
 
     ItemResponse updateItem(String itemId, ItemRequest request);
 

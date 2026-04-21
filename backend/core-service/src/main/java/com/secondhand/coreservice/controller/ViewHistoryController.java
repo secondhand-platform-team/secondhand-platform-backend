@@ -132,7 +132,7 @@ public class ViewHistoryController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<MessageResponse> deleteViewHistory(@PathVariable Long id) {
+    public ResponseEntity<MessageResponse> deleteViewHistory(@PathVariable String id) {
         viewHistoryService.deleteViewHistory(id);
         return ResponseEntity.ok(MessageResponse.success("View history deleted"));
     }

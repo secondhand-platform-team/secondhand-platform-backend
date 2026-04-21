@@ -133,7 +133,7 @@ public class ViewHistoryServiceImpl implements ViewHistoryService {
     }
 
     @Override
-    public void deleteViewHistory(Long id) {
+    public void deleteViewHistory(String id) {
         log.info("Deleting view history record with ID: {}", id);
 
         ViewHistory history = viewHistoryRepository.findById(id)

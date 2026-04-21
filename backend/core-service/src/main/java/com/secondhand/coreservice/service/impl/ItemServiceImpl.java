@@ -8,6 +8,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.Arrays;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,7 +52,8 @@ import com.secondhand.coreservice.security.JwtAuthenticatedUser;
 import com.secondhand.coreservice.service.CloudinaryService;
 import com.secondhand.coreservice.service.ItemService;
 import com.secondhand.coreservice.service.PaymentEventService;
-import com.secondhand.coreservice.grpc.payment.VerifyPaymentResponse;
+import com.secondhand.coreservice.client.PaymentRestClient.PaymentCreateResult;
+import com.secondhand.coreservice.client.PaymentRestClient.PaymentVerifyResult;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -302,22 +307,22 @@ public class ItemServiceImpl implements ItemService {
             try {
                 log.info("Creating payment for SELL item: {} with userId: {}", savedItem.getItemId(), userId);
 
-                com.secondhand.coreservice.grpc.payment.CreatePaymentResponse paymentResponse = paymentEventService
+                PaymentCreateResult paymentResponse = paymentEventService
                         .createVnPayPayment(
                                 request.getPrice().longValue(),
                                 "NCB",
                                 "vn",
                                 userId);
 
-                if ("00".equals(paymentResponse.getCode())) {
+                if ("00".equals(paymentResponse.code())) {
                     // Store transaction ID and payment URL in item for tracking
-                    savedItem.setTransactionId(paymentResponse.getTransactionId());
-                    savedItem.setPaymentUrl(paymentResponse.getPaymentUrl());
+                    savedItem.setTransactionId(paymentResponse.transactionId());
+                    savedItem.setPaymentUrl(paymentResponse.paymentUrl());
                     itemRepository.save(savedItem);
-                    log.info("Payment created successfully - TransactionId: {}", paymentResponse.getTransactionId());
+                    log.info("Payment created successfully - TransactionId: {}", paymentResponse.transactionId());
                 } else {
-                    log.error("Failed to create payment: {}", paymentResponse.getMessage());
-                    throw new BadRequestException("Failed to create payment: " + paymentResponse.getMessage());
+                    log.error("Failed to create payment: {}", paymentResponse.message());
+                    throw new BadRequestException("Failed to create payment: " + paymentResponse.message());
                 }
             } catch (Exception e) {
                 log.error("Error creating payment for item", e);
@@ -351,9 +356,137 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<ItemResponse> getAllItemsPaginated(int page, int size, String sort) {
+        Sort sortOrder = "oldest".equals(sort)
+                ? Sort.by("createdAt").ascending()
+                : Sort.by("createdAt").descending();
+        Pageable pageable = PageRequest.of(page, size, sortOrder);
+        Page<Item> items = itemRepository.findAllByStatus(ItemStatus.ACTIVE, pageable);
+        return items.map(this::mapToItemResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ItemResponse> getMyItems() {
         String currentUserId = getCurrentUserId();
         List<Item> items = itemRepository.findByUserId(currentUserId);
+        return items.stream()
+                .map(this::mapToItemResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ItemResponse> getMyItemsPaginated(int page, int size) {
+        String currentUserId = getCurrentUserId();
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<Item> items = itemRepository.findByUserId(currentUserId, pageable);
+        return items.map(this::mapToItemResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ItemResponse> searchItems(
+            String keyword,
+            String categoryId,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            String condition,
+            String transactionType,
+            String city,
+            String district,
+            String ward,
+            int page,
+            int size,
+            String sort) {
+        String sortParam = (sort != null && !sort.isBlank()) ? sort : "newest";
+        Pageable pageable = PageRequest.of(page, size);
+        String keywordParam = normalizeKeywordPattern(keyword);
+        String categoryIdParam = (categoryId != null && !categoryId.isBlank()) ? categoryId : null;
+        String cityParam = normalizeCityPattern(city);
+        String districtParam = normalizeDistrictPattern(district);
+        String wardParam = normalizeWardPattern(ward);
+
+        ItemCondition conditionParam = null;
+        if (condition != null && !condition.isBlank()) {
+            try { conditionParam = ItemCondition.valueOf(condition.toUpperCase()); } catch (IllegalArgumentException ignored) {}
+        }
+        TransactionType transactionTypeParam = null;
+        if (transactionType != null && !transactionType.isBlank()) {
+            try { transactionTypeParam = TransactionType.valueOf(transactionType.toUpperCase()); } catch (IllegalArgumentException ignored) {}
+        }
+
+        Page<Item> items = itemRepository.searchItems(
+                keywordParam, categoryIdParam, minPrice, maxPrice,
+                conditionParam != null ? conditionParam.name() : null,
+                transactionTypeParam != null ? transactionTypeParam.name() : null,
+            cityParam, districtParam, wardParam, sortParam, pageable);
+        return items.map(this::mapToItemResponse);
+    }
+
+    private String normalizeKeywordPattern(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+        String normalized = keyword.trim().replaceAll("\\s+", "%");
+        return "%" + normalized + "%";
+    }
+
+    private String normalizeCityPattern(String city) {
+        return normalizeLocationPattern(city,
+                "thành phố ",
+                "tp. ",
+                "tp ",
+                "tỉnh ");
+    }
+
+    private String normalizeDistrictPattern(String district) {
+        return normalizeLocationPattern(district,
+                "quận ",
+                "huyện ",
+                "thị xã ",
+                "tx. ",
+                "tx ",
+                "thành phố ",
+                "tp. ",
+                "tp ");
+    }
+
+    private String normalizeWardPattern(String ward) {
+        return normalizeLocationPattern(ward,
+                "phường ",
+                "xã ",
+                "thị trấn ");
+    }
+
+    private String normalizeLocationPattern(String value, String... prefixes) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        String normalized = value.trim();
+        String lower = normalized.toLowerCase();
+
+        for (String prefix : prefixes) {
+            if (lower.startsWith(prefix)) {
+                normalized = normalized.substring(prefix.length()).trim();
+                break;
+            }
+        }
+
+        if (normalized.isBlank()) {
+            return null;
+        }
+
+        normalized = normalized.replaceAll("\\s+", "%");
+        return "%" + normalized + "%";
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ItemResponse> getFeaturedItems(int limit) {
+        Pageable pageable = PageRequest.of(0, limit, Sort.by("createdAt").descending());
+        List<Item> items = itemRepository.findTopActiveItems(pageable);
         return items.stream()
                 .map(this::mapToItemResponse)
                 .collect(Collectors.toList());
@@ -753,17 +886,17 @@ public class ItemServiceImpl implements ItemService {
                 request.getTransactionId(), request.getOrderId());
 
         try {
-            // Verify payment through gRPC call to order-service
-            VerifyPaymentResponse paymentResponse = paymentEventService.verifyPaymentCallback(
+            // Verify payment through REST call to order-service
+            PaymentVerifyResult paymentResponse = paymentEventService.verifyPaymentCallback(
                     request.getTransactionId(),
                     request.getOrderId(),
                     request.getResponseCode(),
                     request.getSecureHash());
 
             // Check if payment is valid
-            if (!paymentResponse.getIsValid()) {
+            if (!paymentResponse.valid()) {
                 log.warn("Payment verification failed for transaction: {}", request.getTransactionId());
-                throw new BadRequestException("Payment verification failed: " + paymentResponse.getMessage());
+                throw new BadRequestException("Payment verification failed: " + paymentResponse.message());
             }
 
             log.info("Payment verified successfully for transaction: {}", request.getTransactionId());

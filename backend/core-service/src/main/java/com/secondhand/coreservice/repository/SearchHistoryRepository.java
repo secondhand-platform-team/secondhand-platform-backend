@@ -13,7 +13,7 @@ import org.springframework.stereotype.Repository;
 import com.secondhand.coreservice.model.SearchHistory;
 
 @Repository
-public interface SearchHistoryRepository extends JpaRepository<SearchHistory, Long> {
+public interface SearchHistoryRepository extends JpaRepository<SearchHistory, String> {
 
     Page<SearchHistory> findByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
 

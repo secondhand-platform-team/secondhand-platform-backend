@@ -92,7 +92,7 @@ public class SearchHistoryController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<MessageResponse> deleteSearchHistory(@PathVariable Long id) {
+    public ResponseEntity<MessageResponse> deleteSearchHistory(@PathVariable String id) {
         searchHistoryService.deleteSearchHistory(id);
         return ResponseEntity.ok(MessageResponse.success("Search history deleted"));
     }

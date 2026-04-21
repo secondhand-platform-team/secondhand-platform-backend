@@ -32,8 +32,7 @@ import lombok.ToString;
 public class SearchHistory {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
     @Column(nullable = false)
     private String userId;
@@ -50,6 +49,9 @@ public class SearchHistory {
 
     @PrePersist
     protected void onPrePersist() {
+        if (this.id == null) {
+            this.id = com.secondhand.coreservice.utils.IdGenerator.generateId();
+        }
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
         }

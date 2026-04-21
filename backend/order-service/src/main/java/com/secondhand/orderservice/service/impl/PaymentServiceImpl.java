@@ -139,6 +139,87 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
+    public PaymentResponse createVnPayPaymentInternal(Long amount, String bankCode, String language, String userId) {
+        CreatePaymentRequest request = new CreatePaymentRequest();
+        request.setAmount(amount);
+        request.setBankCode(bankCode);
+        request.setLanguage(language != null ? language : "vn");
+        request.setUserId(userId);
+        // Internal calls use loopback IP (HttpServletRequest not available in inter-service context)
+        String ipAddr = "127.0.0.1";
+
+        try {
+            String vnp_Version = "2.1.0";
+            String vnp_Command = "pay";
+            String orderType = "other";
+            long vnpAmount = amount * 100;
+            String vnp_TxnRef = VnPayConfig.getRandomNumber(8);
+            String vnp_TmnCode = tmnCode != null ? tmnCode.trim() : VnPayConfig.vnp_TmnCode;
+
+            Map<String, String> vnp_Params = new HashMap<>();
+            vnp_Params.put("vnp_Version", vnp_Version);
+            vnp_Params.put("vnp_Command", vnp_Command);
+            vnp_Params.put("vnp_TmnCode", vnp_TmnCode);
+            vnp_Params.put("vnp_Amount", String.valueOf(vnpAmount));
+            vnp_Params.put("vnp_CurrCode", "VND");
+
+            if (bankCode != null && !bankCode.isEmpty()) {
+                vnp_Params.put("vnp_BankCode", bankCode);
+            }
+            vnp_Params.put("vnp_TxnRef", vnp_TxnRef);
+            vnp_Params.put("vnp_OrderInfo", "Thanh toan don hang");
+            vnp_Params.put("vnp_OrderType", orderType);
+            vnp_Params.put("vnp_Locale", language != null && !language.isEmpty() ? language : "vn");
+            vnp_Params.put("vnp_ReturnUrl", returnUrl != null ? returnUrl.trim() : VnPayConfig.vnp_ReturnUrl);
+            vnp_Params.put("vnp_IpAddr", ipAddr);
+
+            TimeZone vnTimeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh");
+            Calendar cld = Calendar.getInstance(vnTimeZone);
+            SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
+            formatter.setTimeZone(vnTimeZone);
+            vnp_Params.put("vnp_CreateDate", formatter.format(cld.getTime()));
+            cld.add(Calendar.MINUTE, 15);
+            vnp_Params.put("vnp_ExpireDate", formatter.format(cld.getTime()));
+
+            List<String> fieldNames = new ArrayList<>(vnp_Params.keySet());
+            Collections.sort(fieldNames);
+            List<String> hashDataParts = new ArrayList<>();
+            List<String> queryParts = new ArrayList<>();
+
+            for (String fieldName : fieldNames) {
+                String fieldValue = vnp_Params.get(fieldName);
+                if (fieldValue != null && !fieldValue.isEmpty()) {
+                    hashDataParts.add(fieldName + "=" + URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
+                    queryParts.add(URLEncoder.encode(fieldName, StandardCharsets.US_ASCII.toString()) + "=" + URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
+                }
+            }
+
+            String hashData = String.join("&", hashDataParts);
+            String queryUrl = String.join("&", queryParts);
+            String secureKeyToUse = secretKey != null ? secretKey.trim() : VnPayConfig.secretKey;
+            String vnp_SecureHash = VnPayConfig.hmacSHA512(secureKeyToUse, hashData);
+            queryUrl += "&vnp_SecureHashType=HmacSHA512&vnp_SecureHash=" + vnp_SecureHash;
+            String payUrlToUse = payUrl != null ? payUrl.trim() : VnPayConfig.vnp_PayUrl;
+            String paymentUrl = payUrlToUse + "?" + queryUrl;
+
+            String transactionId = "TXN-" + System.currentTimeMillis() + "-" + vnp_TxnRef;
+
+            Payment payment = new Payment();
+            payment.setId(UUID.randomUUID().toString());
+            payment.setTransactionId(transactionId);
+            payment.setAmount((double) amount);
+            payment.setMethod(PaymentMethod.VNPAY);
+            payment.setStatus(PaymentStatus.PENDING);
+            payment.setCreatedAt(LocalDateTime.now());
+            paymentRepository.save(payment);
+
+            return new PaymentResponse("00", "success", paymentUrl, transactionId);
+        } catch (Exception e) {
+            return new PaymentResponse("99", "error: " + e.getMessage(), null, null);
+        }
+    }
+
+    @Override
     public String handleVnPayReturn(HttpServletRequest request) {
         try {
             String vnp_ResponseCode = request.getParameter("vnp_ResponseCode");

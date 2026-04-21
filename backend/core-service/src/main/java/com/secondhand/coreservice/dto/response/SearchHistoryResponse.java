@@ -19,7 +19,7 @@ import lombok.Setter;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class SearchHistoryResponse {
 
-    private Long id;
+    private String id;
 
     @JsonProperty("searchQuery")
     private String searchQuery;

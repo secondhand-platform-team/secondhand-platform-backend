@@ -14,7 +14,7 @@ import org.springframework.stereotype.Repository;
 import com.secondhand.coreservice.model.ViewHistory;
 
 @Repository
-public interface ViewHistoryRepository extends JpaRepository<ViewHistory, Long> {
+public interface ViewHistoryRepository extends JpaRepository<ViewHistory, String> {
 
         Page<ViewHistory> findByUserIdOrderByViewedAtDesc(String userId, Pageable pageable);
 

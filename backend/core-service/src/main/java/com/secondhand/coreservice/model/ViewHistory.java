@@ -22,12 +22,12 @@ import lombok.ToString;
 
 @Entity
 @Table(name = "view_history", indexes = {
-        @Index(name = "idx_user_id_item_id_created_at", columnList = "user_id DESC, item_id, created_at DESC"),
-        @Index(name = "idx_user_id_created_at", columnList = "user_id DESC, created_at DESC"),
-        @Index(name = "idx_item_id_created_at", columnList = "item_id, created_at DESC"),
-        @Index(name = "idx_user_id", columnList = "user_id"),
-        @Index(name = "idx_item_id", columnList = "item_id"),
-        @Index(name = "idx_created_at", columnList = "created_at DESC")
+        @Index(name = "idx_vh_user_id_item_id_created_at", columnList = "user_id DESC, item_id, created_at DESC"),
+        @Index(name = "idx_vh_user_id_created_at", columnList = "user_id DESC, created_at DESC"),
+        @Index(name = "idx_vh_item_id_created_at", columnList = "item_id, created_at DESC"),
+        @Index(name = "idx_vh_user_id", columnList = "user_id"),
+        @Index(name = "idx_vh_item_id", columnList = "item_id"),
+        @Index(name = "idx_vh_created_at", columnList = "created_at DESC")
 })
 @Getter
 @Setter
@@ -38,8 +38,7 @@ import lombok.ToString;
 public class ViewHistory {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
     @Column(nullable = false)
     private String userId;
@@ -58,6 +57,9 @@ public class ViewHistory {
 
     @PrePersist
     protected void onPrePersist() {
+        if (this.id == null) {
+            this.id = com.secondhand.coreservice.utils.IdGenerator.generateId();
+        }
         if (this.viewedAt == null) {
             this.viewedAt = LocalDateTime.now();
         }

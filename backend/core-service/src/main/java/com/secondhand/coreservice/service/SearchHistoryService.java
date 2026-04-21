@@ -20,7 +20,7 @@ public interface SearchHistoryService {
 
     List<String> getTrendingSearches();
 
-    void deleteSearchHistory(Long id);
+    void deleteSearchHistory(String id);
 
     void clearSearchHistory();
 

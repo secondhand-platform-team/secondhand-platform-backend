@@ -1,8 +1,10 @@
 package com.secondhand.coreservice.controller;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -78,6 +80,34 @@ public class ItemController {
     @GetMapping
     public ResponseEntity<List<ItemResponse>> getAllItems() {
         List<ItemResponse> items = itemService.getAllItems();
+        return ResponseEntity.ok(items);
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<Page<ItemResponse>> searchItems(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String categoryId,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) String condition,
+            @RequestParam(required = false) String transactionType,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String district,
+            @RequestParam(required = false) String ward,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(defaultValue = "newest") String sort) {
+        if (size > 50) size = 50;
+        Page<ItemResponse> items = itemService.searchItems(
+                q, categoryId, minPrice, maxPrice, condition, transactionType, city, district, ward, page, size, sort);
+        return ResponseEntity.ok(items);
+    }
+
+    @GetMapping("/featured")
+    public ResponseEntity<List<ItemResponse>> getFeaturedItems(
+            @RequestParam(defaultValue = "4") int limit) {
+        if (limit > 20) limit = 20;
+        List<ItemResponse> items = itemService.getFeaturedItems(limit);
         return ResponseEntity.ok(items);
     }
 
@@ -199,3 +229,4 @@ public class ItemController {
         }
     }
 }
+

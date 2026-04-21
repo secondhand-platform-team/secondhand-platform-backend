@@ -40,6 +40,8 @@ public class User {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
-    private List<Addresses> addressesList;  
-    private int freeSellUsed=2 ;
+    private List<Addresses> addressesList;
+
+    @Builder.Default
+    private int freeSellUsed = 2;
 }

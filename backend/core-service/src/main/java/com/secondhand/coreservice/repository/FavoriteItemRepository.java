@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface FavoriteItemRepository extends JpaRepository<FavoriteItem, Long> {
+public interface FavoriteItemRepository extends JpaRepository<FavoriteItem, String> {
     boolean existsByUserIdAndItem_ItemId(String userId, String itemId);
 
     Optional<FavoriteItem> findByUserIdAndItem_ItemId(String userId, String itemId);

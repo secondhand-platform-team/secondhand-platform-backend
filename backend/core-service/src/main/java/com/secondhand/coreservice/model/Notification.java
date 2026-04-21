@@ -1,6 +1,7 @@
 package com.secondhand.coreservice.model;
 
 import com.secondhand.coreservice.model.enums.NotificationType;
+import com.secondhand.coreservice.utils.IdGenerator;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -16,8 +17,7 @@ import java.time.LocalDateTime;
 public class Notification {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
     // user nhận thông báo (từ auth-service)
     private String userId;
@@ -36,4 +36,14 @@ public class Notification {
     private Boolean isRead = false;
 
     private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onPrePersist() {
+        if (this.id == null) {
+            this.id = IdGenerator.generateId();
+        }
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+    }
 }

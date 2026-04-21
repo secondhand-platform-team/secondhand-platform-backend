@@ -21,7 +21,7 @@ public interface ViewHistoryService {
 
     Page<ViewHistoryResponse> getViewHistoryByCategory(String categoryId, Pageable pageable);
 
-    void deleteViewHistory(Long id);
+    void deleteViewHistory(String id);
 
     void clearViewHistory();
 

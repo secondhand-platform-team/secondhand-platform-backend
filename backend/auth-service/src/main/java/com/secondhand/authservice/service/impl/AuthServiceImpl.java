@@ -9,7 +9,7 @@ import com.secondhand.authservice.dto.response.UserInfoResponse;
 import com.secondhand.authservice.dto.response.UserProfileInfoResponse;
 import com.secondhand.authservice.dto.response.UserProfileResponse;
 import com.secondhand.authservice.exception.BadRequestException;
-import com.secondhand.authservice.grpc.CartGrpcClient;
+import com.secondhand.authservice.client.CartRestClient;
 import com.secondhand.authservice.model.RefreshToken;
 import com.secondhand.authservice.model.User;
 import com.secondhand.authservice.model.UserProfile;
@@ -41,7 +41,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
-    private final CartGrpcClient cartGrpcClient;
+    private final CartRestClient cartRestClient;
     private final CloudinaryService cloudinaryService;
     private final RefreshTokenService refreshTokenService;
 
@@ -126,7 +126,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private void createCartForUser(String userId) {
-        cartGrpcClient.createCart(userId);
+        cartRestClient.createCart(userId);
     }
 
     @Override

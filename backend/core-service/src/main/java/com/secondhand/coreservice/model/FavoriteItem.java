@@ -1,5 +1,6 @@
 package com.secondhand.coreservice.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.secondhand.coreservice.utils.IdGenerator;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -13,8 +14,7 @@ import lombok.*;
 
 public class FavoriteItem {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
     private String userId;
 
@@ -23,4 +23,11 @@ public class FavoriteItem {
     @JsonIgnore
     @ToString.Exclude
     private Item item;
+
+    @PrePersist
+    protected void onPrePersist() {
+        if (this.id == null) {
+            this.id = IdGenerator.generateId();
+        }
+    }
 }

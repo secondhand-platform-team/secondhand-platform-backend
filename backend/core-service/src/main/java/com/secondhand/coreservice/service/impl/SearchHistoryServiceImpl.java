@@ -122,7 +122,7 @@ public class SearchHistoryServiceImpl implements SearchHistoryService {
     }
 
     @Override
-    public void deleteSearchHistory(Long id) {
+    public void deleteSearchHistory(String id) {
         log.info("Deleting search history record with ID: {}", id);
 
         SearchHistory history = searchHistoryRepository.findById(id)
