@@ -1,18 +1,26 @@
 package com.secondhand.coreservice.service.impl;
 
+import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Queue;
 import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.secondhand.coreservice.dto.request.CategoryRequest;
 import com.secondhand.coreservice.dto.response.CategoryAttributeResponse;
 import com.secondhand.coreservice.dto.response.CategoryResponse;
+import com.secondhand.coreservice.dto.response.ItemResponse;
 import com.secondhand.coreservice.dto.response.MessageResponse;
 import com.secondhand.coreservice.exception.BadRequestException;
 import com.secondhand.coreservice.exception.ResourceNotFoundException;
@@ -20,6 +28,7 @@ import com.secondhand.coreservice.model.Category;
 import com.secondhand.coreservice.model.CategoryAttribute;
 import com.secondhand.coreservice.repository.CategoryAttributeRepository;
 import com.secondhand.coreservice.repository.CategoryRepository;
+import com.secondhand.coreservice.repository.ItemRepository;
 import com.secondhand.coreservice.service.CategoryService;
 
 import lombok.RequiredArgsConstructor;
@@ -34,6 +43,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final CategoryAttributeRepository categoryAttributeRepository;
+    private final ItemRepository itemRepository;
 
     @Override
     public CategoryResponse createCategory(CategoryRequest request) {
@@ -211,6 +221,102 @@ public class CategoryServiceImpl implements CategoryService {
                 .sortOrder(attribute.getSortOrder())
                 .createdAt(attribute.getCreatedAt())
                 .updatedAt(attribute.getUpdatedAt())
+                .build();
+    }
+
+    /**
+     * Collect all descendant category IDs (BFS) starting from the given category.
+     * The root itself is included.
+     */
+    private List<String> getAllDescendantCategoryIds(String rootCategoryId) {
+        List<String> result = new ArrayList<>();
+        Queue<String> queue = new LinkedList<>();
+        queue.add(rootCategoryId);
+        while (!queue.isEmpty()) {
+            String current = queue.poll();
+            result.add(current);
+            List<Category> children = categoryRepository.findByParentCategoryId(current);
+            children.forEach(c -> queue.add(c.getCategoryId()));
+        }
+        return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ItemResponse> searchItemsByCategory(
+            String categoryId,
+            String keyword,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            String condition,
+            String transactionType,
+            String city,
+            String district,
+            String ward,
+            int page,
+            int size,
+            String sort) {
+
+        // Validate category exists
+        categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryId));
+
+        // Collect the root + all descendant category IDs
+        List<String> categoryIds = getAllDescendantCategoryIds(categoryId);
+
+        // Build PostgreSQL array literal: {id1,id2,...}
+        String pgArray = "{" + String.join(",", categoryIds) + "}";
+
+        String kw = (keyword != null && !keyword.isBlank()) ? "%" + keyword.trim() + "%" : null;
+        String cond = (condition != null && !condition.isBlank()) ? condition : null;
+        String txType = (transactionType != null && !transactionType.isBlank()) ? transactionType : null;
+        String cityVal = (city != null && !city.isBlank()) ? "%" + city.trim() + "%" : null;
+        String districtVal = (district != null && !district.isBlank()) ? "%" + district.trim() + "%" : null;
+        String wardVal = (ward != null && !ward.isBlank()) ? "%" + ward.trim() + "%" : null;
+        String sortVal = (sort != null && !sort.isBlank()) ? sort : "newest";
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        return itemRepository.searchItemsByCategoryIds(
+                pgArray, kw, minPrice, maxPrice, cond, txType, cityVal, districtVal, wardVal, sortVal, pageable)
+                .map(this::mapToItemResponse);
+    }
+
+    private ItemResponse mapToItemResponse(com.secondhand.coreservice.model.Item item) {
+        com.secondhand.coreservice.dto.response.LocationResponse locationResponse = null;
+        if (item.getItemLocation() != null) {
+            locationResponse = com.secondhand.coreservice.dto.response.LocationResponse.builder()
+                    .address(item.getItemLocation().getAddress())
+                    .ward(item.getItemLocation().getWard())
+                    .district(item.getItemLocation().getDistrict())
+                    .city(item.getItemLocation().getCity())
+                    .build();
+        }
+
+        List<com.secondhand.coreservice.dto.response.ItemImageResponse> imageResponses = new ArrayList<>();
+        if (item.getItemImageList() != null && !item.getItemImageList().isEmpty()) {
+            imageResponses = item.getItemImageList().stream()
+                    .map(img -> com.secondhand.coreservice.dto.response.ItemImageResponse.builder()
+                            .imageUrl(img.getUrl())
+                            .isPrimary(img.getIsPrimary())
+                            .build())
+                    .collect(Collectors.toList());
+        }
+
+        return ItemResponse.builder()
+                .itemId(item.getItemId())
+                .title(item.getTitle())
+                .description(item.getDescription())
+                .price(item.getPrice())
+                .transactionType(item.getTransactionType() != null ? item.getTransactionType().toString() : null)
+                .condition(item.getCondition() != null ? item.getCondition().toString() : null)
+                .status(item.getStatus() != null ? item.getStatus().toString() : null)
+                .userId(item.getUserId())
+                .createdAt(item.getCreatedAt())
+                .updatedAt(item.getUpdatedAt())
+                .categoryId(item.getCategory() != null ? item.getCategory().getCategoryId() : null)
+                .location(locationResponse)
+                .itemImageList(imageResponses)
                 .build();
     }
 }
