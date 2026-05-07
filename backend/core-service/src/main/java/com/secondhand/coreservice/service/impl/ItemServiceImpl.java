@@ -842,6 +842,15 @@ public class ItemServiceImpl implements ItemService {
                     .collect(Collectors.toList());
         }
 
+        long favCount = favoriteItemRepository.countByItem_ItemId(item.getItemId());
+        boolean favedByMe = false;
+        try {
+            String currentUserId = getCurrentUserId();
+            favedByMe = favoriteItemRepository.existsByUserIdAndItem_ItemId(currentUserId, item.getItemId());
+        } catch (Exception e) {
+            // Not authenticated or error getting user id
+        }
+
         return ItemResponse.builder()
                 .itemId(item.getItemId())
                 .title(item.getTitle())
@@ -859,6 +868,8 @@ public class ItemServiceImpl implements ItemService {
                 .attributes(attributeResponses)
                 .transactionId(item.getTransactionId())
                 .paymentUrl(item.getPaymentUrl())
+                .isFavorited(favedByMe)
+                .favoriteCount(favCount)
                 .build();
     }
 

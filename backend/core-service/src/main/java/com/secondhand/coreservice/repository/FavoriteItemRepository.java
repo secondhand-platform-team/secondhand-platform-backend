@@ -14,4 +14,6 @@ public interface FavoriteItemRepository extends JpaRepository<FavoriteItem, Stri
     Optional<FavoriteItem> findByUserIdAndItem_ItemId(String userId, String itemId);
 
     List<FavoriteItem> findByUserId(String userId);
+
+    long countByItem_ItemId(String itemId);
 }

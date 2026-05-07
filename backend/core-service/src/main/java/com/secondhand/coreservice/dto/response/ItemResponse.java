@@ -30,4 +30,6 @@ public class ItemResponse {
     private List<ItemAttributeResponse> attributes;
     private String transactionId;
     private String paymentUrl;
+    private Boolean isFavorited;
+    private Long favoriteCount;
 }

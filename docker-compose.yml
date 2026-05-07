@@ -24,7 +24,7 @@ services:
       - ./gateway/kong/kong.yml:/var/lib/kong/kong.yml:ro
     depends_on:
       auth-service:
-        condition: service_healthy
+        condition: service_started
       # core-service:
       #   condition: service_healthy
     networks:
