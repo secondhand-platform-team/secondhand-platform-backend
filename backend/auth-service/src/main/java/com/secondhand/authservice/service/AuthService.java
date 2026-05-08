@@ -20,13 +20,13 @@ public interface AuthService {
 
     MessageResponse registerAdmin(RegisterRequest request);
 
-    UserInfoResponse getCurrentUser(String email);
+    UserInfoResponse getCurrentUser(String identifier);
 
-    UserProfileInfoResponse getCurrentUserProfile(String email);
+    UserProfileInfoResponse getCurrentUserProfile(String identifier);
 
     UserProfileInfoResponse getUserProfileByUserId(String userId);
 
-    UserProfileInfoResponse updateProfile(String email, UpdateProfileRequest request);
+    UserProfileInfoResponse updateProfile(String identifier, UpdateProfileRequest request);
 
-    UserProfileInfoResponse updateAvatar(String email, MultipartFile file) throws IOException;
+    UserProfileInfoResponse updateAvatar(String identifier, MultipartFile file) throws IOException;
 }

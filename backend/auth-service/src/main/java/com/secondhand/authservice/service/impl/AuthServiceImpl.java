@@ -48,25 +48,31 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse loginByRole(LoginRequest request, Role requiredRole) {
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()));
+        User user = userRepository.findByEmailOrPhoneNumber(request.getEmail(), request.getEmail())
+                .orElseThrow(() -> new BadRequestException("Không có tài khoản nào được đăng ký bằng email hoặc số điện thoại này trong hệ thống."));
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new BadRequestException("User not found"));
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getEmail(),
+                            request.getPassword()));
+            
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
 
-        if (user.getRole() != requiredRole) {
-            throw new BadRequestException("Account does not have permission to login here");
+            if (user.getRole() != requiredRole) {
+                throw new BadRequestException("Account does not have permission to login here");
+            }
+
+            String accessToken = jwtUtils.generateToken(userDetails, user.getUserId());
+
+            RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+
+            return new AuthResponse(accessToken, refreshToken.getToken(), "Bearer");
+        } catch (org.springframework.security.authentication.BadCredentialsException e) {
+            throw new BadRequestException("Sai mật khẩu, vui lòng kiểm tra lại.");
+        } catch (org.springframework.security.core.AuthenticationException e) {
+            throw new BadRequestException("Đăng nhập thất bại: " + e.getMessage());
         }
-
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-
-        String accessToken = jwtUtils.generateToken(userDetails, user.getUserId());
-
-        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
-
-        return new AuthResponse(accessToken, refreshToken.getToken(), "Bearer");
     }
 
     @Override
@@ -130,8 +136,8 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public UserInfoResponse getCurrentUser(String email) {
-        User user = userRepository.findByEmail(email)
+    public UserInfoResponse getCurrentUser(String identifier) {
+        User user = userRepository.findByEmailOrPhoneNumber(identifier, identifier)
                 .orElseThrow(() -> new BadRequestException("User not found"));
 
         return new UserInfoResponse(
@@ -145,8 +151,8 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public UserProfileInfoResponse getCurrentUserProfile(String email) {
-        User user = userRepository.findByEmail(email)
+    public UserProfileInfoResponse getCurrentUserProfile(String identifier) {
+        User user = userRepository.findByEmailOrPhoneNumber(identifier, identifier)
                 .orElseThrow(() -> new BadRequestException("User not found"));
 
         UserInfoResponse userInfo = new UserInfoResponse(
@@ -201,8 +207,8 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public UserProfileInfoResponse updateProfile(String email, UpdateProfileRequest request) {
-        User user = userRepository.findByEmail(email)
+    public UserProfileInfoResponse updateProfile(String identifier, UpdateProfileRequest request) {
+        User user = userRepository.findByEmailOrPhoneNumber(identifier, identifier)
                 .orElseThrow(() -> new BadRequestException("User not found"));
 
         // Update phone number on User entity
@@ -224,13 +230,13 @@ public class AuthServiceImpl implements AuthService {
         if (request.getDateOfBirth() != null) userProfile.setDateOfBirth(request.getDateOfBirth());
 
         userRepository.save(user);
-        return getCurrentUserProfile(email);
+        return getCurrentUserProfile(user.getEmail());
     }
 
     @Override
     @Transactional
-    public UserProfileInfoResponse updateAvatar(String email, MultipartFile file) throws IOException {
-        User user = userRepository.findByEmail(email)
+    public UserProfileInfoResponse updateAvatar(String identifier, MultipartFile file) throws IOException {
+        User user = userRepository.findByEmailOrPhoneNumber(identifier, identifier)
                 .orElseThrow(() -> new BadRequestException("User not found"));
 
         String avatarUrl = cloudinaryService.uploadImage(file);
@@ -244,6 +250,6 @@ public class AuthServiceImpl implements AuthService {
         userProfile.setAvatarUrl(avatarUrl);
 
         userRepository.save(user);
-        return getCurrentUserProfile(email);
+        return getCurrentUserProfile(user.getEmail());
     }
 }

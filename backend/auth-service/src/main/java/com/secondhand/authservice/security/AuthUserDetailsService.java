@@ -20,10 +20,10 @@ public class AuthUserDetailsService implements UserDetailsService {
      * ADMIN: quản trị, ban, kiểm duyệt
      */
     @Override
-    public UserDetails loadUserByUsername(String email)
+    public UserDetails loadUserByUsername(String identifier)
             throws UsernameNotFoundException {
 
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailOrPhoneNumber(identifier, identifier)
                 .orElseThrow(() ->
                         new UsernameNotFoundException("User not found"));
 

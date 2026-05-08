@@ -1,5 +1,6 @@
 package com.secondhand.orderservice.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -9,7 +10,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(exclude = "order")
 @Entity
 @Table(name = "shipments")
 public class Shipment {
@@ -29,5 +30,6 @@ public class Shipment {
 
     @OneToOne
     @JoinColumn(name = "order_id")
+    @JsonIgnore
     private Order order;
 }

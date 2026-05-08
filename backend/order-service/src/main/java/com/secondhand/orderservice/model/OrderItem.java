@@ -1,5 +1,6 @@
 package com.secondhand.orderservice.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -7,7 +8,7 @@ import lombok.*;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(exclude = "order")
 @Entity
 @Table(name = "order_items")
 public class OrderItem {
@@ -27,5 +28,6 @@ public class OrderItem {
 
     @ManyToOne
     @JoinColumn(name = "order_id")
+    @JsonIgnore
     private Order order;
 }

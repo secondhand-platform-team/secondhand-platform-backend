@@ -1,5 +1,6 @@
 package com.secondhand.orderservice.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.secondhand.orderservice.model.enums.TransactionStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -10,7 +11,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(exclude = "payment")
 @Entity
 @Table(name = "transactions")
 public class Transaction {
@@ -29,5 +30,6 @@ public class Transaction {
 
     @OneToOne
     @JoinColumn(name = "payment_id")
+    @JsonIgnore
     private Payment payment;
 }

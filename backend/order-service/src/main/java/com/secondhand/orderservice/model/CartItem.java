@@ -1,5 +1,6 @@
 package com.secondhand.orderservice.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -7,7 +8,7 @@ import lombok.*;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(exclude = "cart")
 @Entity
 @Table(name = "cart_items")
 public class CartItem {
@@ -23,5 +24,6 @@ public class CartItem {
 
     @ManyToOne
     @JoinColumn(name = "cart_id")
+    @JsonIgnore
     private Cart cart;
-}
+}

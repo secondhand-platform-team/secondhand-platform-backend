@@ -1,5 +1,6 @@
 package com.secondhand.orderservice.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.secondhand.orderservice.model.enums.PaymentMethod;
 import com.secondhand.orderservice.model.enums.PaymentStatus;
 import jakarta.persistence.*;
@@ -11,7 +12,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(exclude = "order")
 @Entity
 @Table(name = "payments")
 public class Payment {
@@ -39,6 +40,7 @@ public class Payment {
 
     @OneToOne
     @JoinColumn(name = "order_id")
+    @JsonIgnore
     private Order order;
 
     @OneToOne(mappedBy = "payment", cascade = CascadeType.ALL)
