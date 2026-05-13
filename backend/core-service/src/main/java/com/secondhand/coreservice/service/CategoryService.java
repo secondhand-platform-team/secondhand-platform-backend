@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 
 import com.secondhand.coreservice.dto.request.CategoryRequest;
+import com.secondhand.coreservice.dto.request.CategoryAttributeRequest;
 import com.secondhand.coreservice.dto.response.CategoryAttributeResponse;
 import com.secondhand.coreservice.dto.response.CategoryResponse;
 import com.secondhand.coreservice.dto.response.ItemResponse;
@@ -127,4 +128,10 @@ public interface CategoryService {
             int page,
             int size,
             String sort);
+
+    CategoryAttributeResponse createCategoryAttribute(String categoryId, CategoryAttributeRequest request);
+
+    CategoryAttributeResponse updateCategoryAttribute(String categoryId, String attributeId, CategoryAttributeRequest request);
+
+    MessageResponse deleteCategoryAttribute(String categoryId, String attributeId);
 }
