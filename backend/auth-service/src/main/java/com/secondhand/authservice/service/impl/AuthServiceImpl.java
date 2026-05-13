@@ -49,14 +49,15 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse loginByRole(LoginRequest request, Role requiredRole) {
 
         User user = userRepository.findByEmailOrPhoneNumber(request.getEmail(), request.getEmail())
-                .orElseThrow(() -> new BadRequestException("Không có tài khoản nào được đăng ký bằng email hoặc số điện thoại này trong hệ thống."));
+                .orElseThrow(() -> new BadRequestException(
+                        "Không có tài khoản nào được đăng ký bằng email hoặc số điện thoại này trong hệ thống."));
 
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.getEmail(),
                             request.getPassword()));
-            
+
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
 
             if (user.getRole() != requiredRole) {
@@ -85,9 +86,12 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public MessageResponse registerAdmin(RegisterRequest request) {
-        registerWithRole(request, Role.ADMIN);
-        return MessageResponse.success("Admin registration successful! Please login to continue.");
+    public MessageResponse registerStaffOrAdmin(RegisterRequest request, Role role) {
+        if (role != Role.STAFF && role != Role.ADMIN) {
+            throw new BadRequestException("Invalid role for staff/admin registration");
+        }
+        registerWithRole(request, role);
+        return MessageResponse.success(role.name() + " registration successful! Please login to continue.");
     }
 
     private User registerWithRole(RegisterRequest request, Role role) {
@@ -112,7 +116,7 @@ public class AuthServiceImpl implements AuthService {
                 .email(request.getEmail())
                 .phoneNumber(request.getPhoneNumber())
                 .password(passwordEncoder.encode(request.getPassword()))
-            .role(role)
+                .role(role)
                 .status(true)
                 .createdAt(LocalDate.now())
                 .updatedAt(LocalDate.now())
@@ -145,8 +149,7 @@ public class AuthServiceImpl implements AuthService {
                 user.getEmail(),
                 user.getPhoneNumber(),
                 user.getRole().name(),
-                user.isStatus()
-        , user.getFreeSellUsed());
+                user.isStatus(), user.getFreeSellUsed());
 
     }
 
@@ -161,9 +164,7 @@ public class AuthServiceImpl implements AuthService {
                 user.getPhoneNumber(),
                 user.getRole().name(),
                 user.isStatus(),
-                user.getFreeSellUsed()
-        );
-
+                user.getFreeSellUsed());
 
         UserProfile userProfile = user.getUserProfile();
         UserProfileResponse profileResponse = null;
@@ -189,8 +190,7 @@ public class AuthServiceImpl implements AuthService {
                 user.getEmail(),
                 user.getPhoneNumber(),
                 user.getRole().name(),
-                user.isStatus(),        user.getFreeSellUsed()
-        );
+                user.isStatus(), user.getFreeSellUsed());
         UserProfile userProfile = user.getUserProfile();
         UserProfileResponse profileResponse = null;
         if (userProfile != null) {
@@ -224,10 +224,14 @@ public class AuthServiceImpl implements AuthService {
             user.setUserProfile(userProfile);
         }
 
-        if (request.getFullName() != null) userProfile.setFullName(request.getFullName());
-        if (request.getBio() != null) userProfile.setBio(request.getBio());
-        if (request.getGender() != null) userProfile.setGender(request.getGender());
-        if (request.getDateOfBirth() != null) userProfile.setDateOfBirth(request.getDateOfBirth());
+        if (request.getFullName() != null)
+            userProfile.setFullName(request.getFullName());
+        if (request.getBio() != null)
+            userProfile.setBio(request.getBio());
+        if (request.getGender() != null)
+            userProfile.setGender(request.getGender());
+        if (request.getDateOfBirth() != null)
+            userProfile.setDateOfBirth(request.getDateOfBirth());
 
         userRepository.save(user);
         return getCurrentUserProfile(user.getEmail());
