@@ -8,8 +8,11 @@ import com.secondhand.authservice.dto.response.LoginResponse;
 import com.secondhand.authservice.dto.response.MessageResponse;
 import com.secondhand.authservice.dto.response.UserInfoResponse;
 import com.secondhand.authservice.dto.response.UserProfileInfoResponse;
+import com.secondhand.authservice.exception.BadRequestException;
 import com.secondhand.authservice.model.RefreshToken;
+import com.secondhand.authservice.model.User;
 import com.secondhand.authservice.model.enums.Role;
+import com.secondhand.authservice.repository.UserRepository;
 import com.secondhand.authservice.security.AuthUserDetailsService;
 import com.secondhand.authservice.service.AuthService;
 import com.secondhand.authservice.service.RefreshTokenService;
@@ -42,11 +45,12 @@ public class AuthController {
     private final RefreshTokenService refreshTokenService;
     private final JwtUtils jwtUtils;
     private final AuthUserDetailsService userDetailsService;
+    private final UserRepository userRepository;
 
     // ── Login ─────────────────────────────────────────────────────────────────
 
     @PostMapping("/login/user")
-    public ResponseEntity<LoginResponse> loginUser(
+    public ResponseEntity<LoginResponse> loginClient(
             @RequestBody LoginRequest request,
             HttpServletResponse response) {
         return doLogin(request, Role.USER, response);
@@ -56,7 +60,16 @@ public class AuthController {
     public ResponseEntity<LoginResponse> loginAdmin(
             @RequestBody LoginRequest request,
             HttpServletResponse response) {
-        return doLogin(request, Role.ADMIN, response);
+        // Admin portal accepts both STAFF and ADMIN roles
+        User user = userRepository.findByEmailOrPhoneNumber(request.getEmail(), request.getEmail())
+                .orElseThrow(() -> new BadRequestException(
+                        "Không có tài khoản nào được đăng ký bằng email hoặc số điện thoại này trong hệ thống."));
+
+        if (user.getRole() != Role.STAFF && user.getRole() != Role.ADMIN) {
+            throw new BadRequestException("Only STAFF and ADMIN can access admin portal");
+        }
+
+        return doLogin(request, user.getRole(), response);
     }
 
     private ResponseEntity<LoginResponse> doLogin(
@@ -140,8 +153,10 @@ public class AuthController {
 
     @PostMapping("/register/admin")
     public ResponseEntity<MessageResponse> registerAdmin(
-            @Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(authService.registerAdmin(request));
+            @Valid @RequestBody RegisterRequest request,
+            @RequestParam String role) {
+        Role roleEnum = Role.valueOf(role.toUpperCase());
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.registerStaffOrAdmin(request, roleEnum));
     }
 
     // ── Profile ───────────────────────────────────────────────────────────────
@@ -179,7 +194,8 @@ public class AuthController {
         } catch (Exception e) {
             log.error("Avatar upload failed for {}: {}", email, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(java.util.Map.of("error", e.getClass().getSimpleName(), "message", e.getMessage() != null ? e.getMessage() : "Unknown error"));
+                    .body(java.util.Map.of("error", e.getClass().getSimpleName(), "message",
+                            e.getMessage() != null ? e.getMessage() : "Unknown error"));
         }
     }
 
@@ -196,4 +212,3 @@ public class AuthController {
         return ResponseEntity.ok(userService.getFreeSellUsed(userId));
     }
 }
-

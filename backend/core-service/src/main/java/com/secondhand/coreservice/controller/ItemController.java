@@ -159,10 +159,18 @@ public class ItemController {
 
     @DeleteMapping("/{itemId}")
     public ResponseEntity<MessageResponse> deleteItem(@PathVariable String itemId) {
+        System.out.println("đã vô tới đây");
         MessageResponse response = itemService.deleteItem(itemId);
         return ResponseEntity.ok(response);
     }
-
+    @DeleteMapping("/test")
+    public void test() {
+        System.out.println("đã vô tới đây");
+    }
+    @GetMapping("/test")
+    public void test2() {
+        System.out.println("đã vô tới đây");
+    }
     @PostMapping("/{itemId}/favorite")
     public ResponseEntity<MessageResponse> addFavorite(@PathVariable String itemId) {
         MessageResponse response = itemService.addFavoriteItem(itemId);

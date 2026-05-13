@@ -18,7 +18,7 @@ public interface AuthService {
 
     MessageResponse registerUser(RegisterRequest request);
 
-    MessageResponse registerAdmin(RegisterRequest request);
+    MessageResponse registerStaffOrAdmin(RegisterRequest request, Role role);
 
     UserInfoResponse getCurrentUser(String identifier);
 

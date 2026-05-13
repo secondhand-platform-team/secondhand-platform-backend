@@ -5,7 +5,5 @@ public enum ReportStatus {
     PENDING,
     REVIEWING,
     RESOLVED,
-    REJECTED,
-    SCAM,
-    SPAM
+    REJECTED
 }

@@ -70,6 +70,8 @@ public class Item {
 
     private LocalDateTime updatedAt;
 
+    private LocalDateTime deletedAt;
+
     private String userId;
 
     // Transaction ID for payment tracking

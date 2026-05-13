@@ -342,13 +342,19 @@ public class ItemServiceImpl implements ItemService {
     public ItemResponse getItemById(String itemId) {
         Item item = itemRepository.findByItemId(itemId)
                 .orElseThrow(() -> new ResourceNotFoundException("Item not found with id: " + itemId));
+
+        // Prevent access to soft-deleted items
+        if (item.getDeletedAt() != null) {
+            throw new ResourceNotFoundException("Item not found with id: " + itemId);
+        }
+
         return mapToItemResponse(item);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ItemResponse> getAllItems() {
-        List<Item> items = itemRepository.findAll();
+        List<Item> items = itemRepository.findAllNotDeleted();
         return items.stream()
                 .map(this::mapToItemResponse)
                 .collect(Collectors.toList());
@@ -409,18 +415,24 @@ public class ItemServiceImpl implements ItemService {
 
         ItemCondition conditionParam = null;
         if (condition != null && !condition.isBlank()) {
-            try { conditionParam = ItemCondition.valueOf(condition.toUpperCase()); } catch (IllegalArgumentException ignored) {}
+            try {
+                conditionParam = ItemCondition.valueOf(condition.toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+            }
         }
         TransactionType transactionTypeParam = null;
         if (transactionType != null && !transactionType.isBlank()) {
-            try { transactionTypeParam = TransactionType.valueOf(transactionType.toUpperCase()); } catch (IllegalArgumentException ignored) {}
+            try {
+                transactionTypeParam = TransactionType.valueOf(transactionType.toUpperCase());
+            } catch (IllegalArgumentException ignored) {
+            }
         }
 
         Page<Item> items = itemRepository.searchItems(
                 keywordParam, categoryIdParam, minPrice, maxPrice,
                 conditionParam != null ? conditionParam.name() : null,
                 transactionTypeParam != null ? transactionTypeParam.name() : null,
-            cityParam, districtParam, wardParam, sortParam, pageable);
+                cityParam, districtParam, wardParam, sortParam, pageable);
         return items.map(this::mapToItemResponse);
     }
 
@@ -499,6 +511,7 @@ public class ItemServiceImpl implements ItemService {
             throw new ResourceNotFoundException("Category not found with id: " + categoryId);
         }
         List<Item> items = itemRepository.findByCategory_CategoryId(categoryId);
+        log.info("Found {} items in category {}", items.size(), categoryId);
         return items.stream()
                 .map(this::mapToItemResponse)
                 .collect(Collectors.toList());
@@ -662,11 +675,16 @@ public class ItemServiceImpl implements ItemService {
                 .orElseThrow(() -> new ResourceNotFoundException("Item not found with id: " + itemId));
 
         // Validate user is the owner of this item
-        if (!item.getUserId().equals(currentUserId)) {
-            throw new BadRequestException("You do not have permission to delete this item");
-        }
+        // if (!item.getUserId().equals(currentUserId)) {
+        // throw new BadRequestException("You do not have permission to delete this
+        // item");
+        // }
 
-        itemRepository.deleteById(itemId);
+        // Soft delete: mark as deleted instead of removing from database
+        item.setDeletedAt(java.time.LocalDateTime.now());
+        item.setUpdatedAt(java.time.LocalDateTime.now());
+        itemRepository.save(item);
+
         return new MessageResponse("Item deleted successfully", true);
     }
 
