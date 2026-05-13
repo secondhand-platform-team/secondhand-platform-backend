@@ -17,4 +17,5 @@ public class CategoryRequest {
     private String slug;
     private String description;
     private Long postingFee;
+    private String parentId;
 }
