@@ -264,6 +264,31 @@ services:
       - secondhand
     restart: unless-stopped
 
+  # =========================
+  # AI SERVICE (dev mode)
+  # =========================
+  ai-service:
+    build:
+      context: ./backend/ai-service
+      dockerfile: Dockerfile.dev
+    container_name: ktpm-ai-service
+    volumes:
+      - ./backend/ai-service:/app
+    ports:
+      - "8085:8085"
+    env_file:
+      - ./backend/ai-service/.env
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./backend/ai-service/app
+          target: /app/app
+        - action: rebuild
+          path: ./backend/ai-service/requirements.txt
+    networks:
+      - secondhand
+    restart: unless-stopped
+
 networks:
   secondhand:
     driver: bridge

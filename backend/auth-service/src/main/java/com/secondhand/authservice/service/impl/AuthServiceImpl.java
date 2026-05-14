@@ -52,6 +52,14 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new BadRequestException(
                         "Không có tài khoản nào được đăng ký bằng email hoặc số điện thoại này trong hệ thống."));
 
+        if (requiredRole == Role.USER && user.getRole() != Role.USER) {
+            throw new BadRequestException("Tài khoản quản trị viên không thể đăng nhập vào trang người dùng.");
+        }
+
+        if ((requiredRole == Role.ADMIN || requiredRole == Role.STAFF) && user.getRole() == Role.USER) {
+            throw new BadRequestException("Tài khoản người dùng không có quyền truy cập vào trang quản trị.");
+        }
+
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -59,10 +67,6 @@ public class AuthServiceImpl implements AuthService {
                             request.getPassword()));
 
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-
-            if (user.getRole() != requiredRole) {
-                throw new BadRequestException("Account does not have permission to login here");
-            }
 
             String accessToken = jwtUtils.generateToken(userDetails, user.getUserId());
 

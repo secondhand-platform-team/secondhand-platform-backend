@@ -257,6 +257,24 @@ services:
       timeout: 5s
       retries: 5
 
+  # =========================
+  # AI SERVICE
+  # =========================
+  ai-service:
+    build:
+      context: ./backend/ai-service
+      dockerfile: Dockerfile.dev
+    container_name: ktpm-ai-service
+    volumes:
+      - ./backend/ai-service:/app
+    ports:
+      - "8085:8085"
+    env_file:
+      - ./backend/ai-service/.env
+    networks:
+      - secondhand
+    restart: unless-stopped
+
 networks:
   secondhand:
     driver: bridge

@@ -60,16 +60,7 @@ public class AuthController {
     public ResponseEntity<LoginResponse> loginAdmin(
             @RequestBody LoginRequest request,
             HttpServletResponse response) {
-        // Admin portal accepts both STAFF and ADMIN roles
-        User user = userRepository.findByEmailOrPhoneNumber(request.getEmail(), request.getEmail())
-                .orElseThrow(() -> new BadRequestException(
-                        "Không có tài khoản nào được đăng ký bằng email hoặc số điện thoại này trong hệ thống."));
-
-        if (user.getRole() != Role.STAFF && user.getRole() != Role.ADMIN) {
-            throw new BadRequestException("Only STAFF and ADMIN can access admin portal");
-        }
-
-        return doLogin(request, user.getRole(), response);
+        return doLogin(request, Role.ADMIN, response);
     }
 
     private ResponseEntity<LoginResponse> doLogin(

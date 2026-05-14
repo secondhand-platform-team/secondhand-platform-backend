@@ -67,3 +67,13 @@ services:
         protocols:
           - http
           - https
+  - name: ai-service
+    url: http://ai-service:8085
+    routes:
+      - name: ai-route
+        paths:
+          - /ai
+        strip_path: false
+        protocols:
+          - http
+          - https

@@ -187,4 +187,9 @@ docker compose -f docker-compose.infra.yml up -d
 
 # Lệnh này chỉ chạy: Kong (port 8000), PostgreSQL (5435), Redis (6379), MongoDB (27019), RabbitMQ (5672/15672).
 
-# Bước 2 — Chạy từng service trong IntelliJ bình thường (Run/Debug từng module). Không cần set thêm env var nào vì các application.properties đã có default đúng cho local:
+# Bước 2 — Chạy từng service trong IntelliJ bình thường (Run/Debug từng module). Không cần set thêm env var nào vì các application.properties đã có default đúng cho local
+
+Sau này khi bạn đóng gói Deploy lên server thật hoặc quyết định chạy full bộ bằng lệnh docker-compose up cho mọi service, bạn chỉ cần sửa lại .env về http://core-service:8082
+http://auth-service:8081
+http://order-service:8083
+ là hệ thống sẽ tự nhận diện chuẩn xác nhé!
