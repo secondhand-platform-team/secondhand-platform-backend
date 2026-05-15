@@ -23,14 +23,22 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.beans.factory.annotation.Value;
+
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.UUID;
 
 @Service
@@ -44,6 +52,9 @@ public class AuthServiceImpl implements AuthService {
     private final CartRestClient cartRestClient;
     private final CloudinaryService cloudinaryService;
     private final RefreshTokenService refreshTokenService;
+
+    @Value("${app.oauth2.google.client-id}")
+    private String googleClientId;
 
     @Override
     public AuthResponse loginByRole(LoginRequest request, Role requiredRole) {
@@ -78,6 +89,87 @@ public class AuthServiceImpl implements AuthService {
         } catch (org.springframework.security.core.AuthenticationException e) {
             throw new BadRequestException("Đăng nhập thất bại: " + e.getMessage());
         }
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse loginWithGoogle(String idToken) {
+        try {
+            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new GsonFactory())
+                    .setAudience(Collections.singletonList(googleClientId))
+                    .build();
+
+            GoogleIdToken token = verifier.verify(idToken);
+            if (token == null) {
+                throw new BadRequestException("ID Token Google không hợp lệ hoặc đã hết hạn.");
+            }
+
+            GoogleIdToken.Payload payload = token.getPayload();
+            String email = payload.getEmail();
+            String fullName = (String) payload.get("name");
+            String pictureUrl = (String) payload.get("picture");
+
+            User user = userRepository.findByEmail(email)
+                    .orElseGet(() -> registerNewGoogleUser(email, fullName, pictureUrl));
+
+            if (user.getRole() != Role.USER) {
+                throw new BadRequestException("Tài khoản quản trị viên không được phép đăng nhập qua Google.");
+            }
+
+            if (!user.isStatus()) {
+                throw new BadRequestException("Tài khoản của bạn đã bị khóa.");
+            }
+
+            // Create UserDetails for JWT generation
+            UserDetails userDetails = new org.springframework.security.core.userdetails.User(
+                    user.getEmail(),
+                    "", // No password for OAuth users
+                    user.isStatus(),
+                    true, true, true,
+                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
+            );
+
+            String accessToken = jwtUtils.generateToken(userDetails, user.getUserId());
+            RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+
+            return new AuthResponse(accessToken, refreshToken.getToken(), "Bearer");
+        } catch (BadRequestException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BadRequestException("Đăng nhập bằng Google thất bại: " + e.getMessage());
+        }
+    }
+
+    private User registerNewGoogleUser(String email, String fullName, String pictureUrl) {
+        User user = User.builder()
+                .userId(UUID.randomUUID().toString())
+                .email(email)
+                .password("") // Google users don't have a password
+                .role(Role.USER)
+                .status(true)
+                .createdAt(LocalDate.now())
+                .updatedAt(LocalDate.now())
+                .freeSellUsed(2)
+                .build();
+
+        UserProfile userProfile = UserProfile.builder()
+                .user(user)
+                .fullName(fullName)
+                .avatarUrl(pictureUrl)
+                .build();
+
+        user.setUserProfile(userProfile);
+        user = userRepository.save(user);
+        
+        // Create cart for the new user
+        try {
+            createCartForUser(user.getUserId());
+        } catch (Exception e) {
+            // Log error but don't fail login if cart creation fails
+            // log.error("Failed to create cart for Google user {}: {}", email, e.getMessage());
+        }
+        
+        return user;
     }
 
     @Override
