@@ -28,7 +28,7 @@ plugins:
 
 services:
   - name: auth-service
-    url: http://auth-service:8081
+    url: http://host.docker.internal:8081
     routes:
       - name: auth-route
         paths:
@@ -44,21 +44,21 @@ services:
             host: redis
             port: 6379
   - name: core-service
-    url: http://core-service:8082
+    url: http://host.docker.internal:8082
     routes:
       - name: core-route
         paths:
           - /core
         strip_path: true
   - name: order-service
-    url: http://order-service:8083
+    url: http://host.docker.internal:8083
     routes:
       - name: order-route
         paths:
           - /order
         strip_path: true
   - name: chat-service
-    url: http://chat-service:8084
+    url: http://host.docker.internal:8084
     routes:
       - name: chat-route
         paths:
@@ -68,7 +68,7 @@ services:
           - http
           - https
   - name: ai-service
-    url: http://ai-service:8085
+    url: http://host.docker.internal:8085
     routes:
       - name: ai-route
         paths:

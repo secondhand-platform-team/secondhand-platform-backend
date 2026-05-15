@@ -15,6 +15,8 @@ import java.io.IOException;
 public interface AuthService {
 
     AuthResponse loginByRole(LoginRequest request, Role requiredRole);
+    
+    AuthResponse loginWithGoogle(String idToken);
 
     MessageResponse registerUser(RegisterRequest request);
 

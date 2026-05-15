@@ -13,7 +13,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class AdressImpl implements AddressService {
+public class AddressImpl implements AddressService {
 
     private final AddressRepository addressRepository;
     private final UserRepository userRepository;
