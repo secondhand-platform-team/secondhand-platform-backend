@@ -89,4 +89,9 @@ public class OrderController {
             @RequestBody Shipment shipment) {
         return ResponseEntity.ok(orderService.updateShipment(orderId, shipment));
     }
+
+    @GetMapping("/admin/statistics")
+    public ResponseEntity<Map<String, Object>> getAdminStatistics() {
+        return ResponseEntity.ok(orderService.getAdminStatistics());
+    }
 }

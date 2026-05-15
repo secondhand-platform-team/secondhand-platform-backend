@@ -215,4 +215,22 @@ public class OrderServiceImpl implements OrderService {
 
         return orderRepository.save(order);
     }
+
+    @Override
+    public java.util.Map<String, Object> getAdminStatistics() {
+        java.util.Map<String, Object> stats = new java.util.HashMap<>();
+        
+        Double totalRevenue = orderRepository.getTotalRevenue();
+        stats.put("totalRevenue", totalRevenue != null ? totalRevenue : 0.0);
+        
+        Long totalOrders = orderRepository.getTotalOrders();
+        stats.put("totalOrders", totalOrders != null ? totalOrders : 0);
+        
+        stats.put("dailyRevenue", orderRepository.getDailyRevenueLast7Days());
+        stats.put("dailyOrders", orderRepository.getDailyOrdersLast7Days());
+        stats.put("topSellers", orderRepository.getTopSellers());
+        stats.put("topProducts", orderRepository.getTopProducts());
+        
+        return stats;
+    }
 }
