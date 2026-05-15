@@ -28,5 +28,5 @@ public interface OrderService {
     Order createShipment(String orderId, Shipment shipment);
 
     Order updateShipment(String orderId, Shipment shipment);
-    java.util.Map<String, Object> getAdminStatistics();
+    java.util.Map<String, Object> getAdminStatistics(String timeframe);
 }

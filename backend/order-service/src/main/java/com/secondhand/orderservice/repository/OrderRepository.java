@@ -2,7 +2,10 @@ package com.secondhand.orderservice.repository;
 
 import com.secondhand.orderservice.model.Order;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -14,21 +17,25 @@ public interface OrderRepository extends JpaRepository<Order, String> {
 
     List<Order> findAllByOrderByCreatedAtDesc();
 
-    @org.springframework.data.jpa.repository.Query("SELECT SUM(o.totalPrice) FROM Order o WHERE o.status != 'CANCELLED'")
-    Double getTotalRevenue();
+    @Query("SELECT SUM(o.totalPrice) FROM Order o WHERE o.status != 'CANCELLED' AND o.createdAt >= :startDate")
+    Double getTotalRevenue(@Param("startDate") LocalDateTime startDate);
 
-    @org.springframework.data.jpa.repository.Query("SELECT COUNT(o) FROM Order o")
-    Long getTotalOrders();
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.createdAt >= :startDate")
+    Long getTotalOrders(@Param("startDate") LocalDateTime startDate);
 
-    @org.springframework.data.jpa.repository.Query(value = "SELECT CAST(created_at AS DATE) as date, SUM(total_price) as revenue FROM orders WHERE status != 'CANCELLED' AND created_at >= CURRENT_DATE - INTERVAL '7 days' GROUP BY CAST(created_at AS DATE) ORDER BY date", nativeQuery = true)
-    List<Object[]> getDailyRevenueLast7Days();
+    @Query(value = "SELECT CAST(created_at AS DATE) as date, SUM(total_price) as revenue FROM orders WHERE status != 'CANCELLED' AND created_at >= :startDate GROUP BY CAST(created_at AS DATE) ORDER BY date", nativeQuery = true)
+    List<Object[]> getRevenueByTimeframe(@Param("startDate") LocalDateTime startDate);
 
-    @org.springframework.data.jpa.repository.Query(value = "SELECT CAST(created_at AS DATE) as date, COUNT(*) as count FROM orders WHERE created_at >= CURRENT_DATE - INTERVAL '7 days' GROUP BY CAST(created_at AS DATE) ORDER BY date", nativeQuery = true)
-    List<Object[]> getDailyOrdersLast7Days();
+    @Query(value = "SELECT CAST(created_at AS DATE) as date, COUNT(*) as count FROM orders WHERE created_at >= :startDate GROUP BY CAST(created_at AS DATE) ORDER BY date", nativeQuery = true)
+    List<Object[]> getOrdersByTimeframe(@Param("startDate") LocalDateTime startDate);
 
-    @org.springframework.data.jpa.repository.Query(value = "SELECT seller_id, SUM(price * quantity) as revenue, COUNT(DISTINCT order_id) as orders FROM order_items GROUP BY seller_id ORDER BY revenue DESC LIMIT 5", nativeQuery = true)
-    List<Object[]> getTopSellers();
+    @Query(value = "SELECT oi.seller_id, SUM(oi.price * oi.quantity) as revenue, COUNT(DISTINCT oi.order_id) as orders " +
+                   "FROM order_items oi JOIN orders o ON oi.order_id = o.id " +
+                   "WHERE o.created_at >= :startDate GROUP BY oi.seller_id ORDER BY revenue DESC LIMIT 5", nativeQuery = true)
+    List<Object[]> getTopSellersByTimeframe(@Param("startDate") LocalDateTime startDate);
 
-    @org.springframework.data.jpa.repository.Query(value = "SELECT item_id, item_name, SUM(quantity) as sales FROM order_items GROUP BY item_id, item_name ORDER BY sales DESC LIMIT 5", nativeQuery = true)
-    List<Object[]> getTopProducts();
+    @Query(value = "SELECT oi.item_id, oi.item_name, SUM(oi.quantity) as sales " +
+                   "FROM order_items oi JOIN orders o ON oi.order_id = o.id " +
+                   "WHERE o.created_at >= :startDate GROUP BY oi.item_id, oi.item_name ORDER BY sales DESC LIMIT 5", nativeQuery = true)
+    List<Object[]> getTopProductsByTimeframe(@Param("startDate") LocalDateTime startDate);
 }

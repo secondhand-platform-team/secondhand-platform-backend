@@ -217,19 +217,36 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public java.util.Map<String, Object> getAdminStatistics() {
+    public java.util.Map<String, Object> getAdminStatistics(String timeframe) {
         java.util.Map<String, Object> stats = new java.util.HashMap<>();
         
-        Double totalRevenue = orderRepository.getTotalRevenue();
+        java.time.LocalDateTime startDate;
+        switch (timeframe.toLowerCase()) {
+            case "day":
+                startDate = java.time.LocalDateTime.now().with(java.time.LocalTime.MIN);
+                break;
+            case "week":
+                startDate = java.time.LocalDateTime.now().minusDays(7);
+                break;
+            case "year":
+                startDate = java.time.LocalDateTime.now().minusYears(1);
+                break;
+            case "month":
+            default:
+                startDate = java.time.LocalDateTime.now().minusDays(30);
+                break;
+        }
+
+        Double totalRevenue = orderRepository.getTotalRevenue(startDate);
         stats.put("totalRevenue", totalRevenue != null ? totalRevenue : 0.0);
         
-        Long totalOrders = orderRepository.getTotalOrders();
+        Long totalOrders = orderRepository.getTotalOrders(startDate);
         stats.put("totalOrders", totalOrders != null ? totalOrders : 0);
         
-        stats.put("dailyRevenue", orderRepository.getDailyRevenueLast7Days());
-        stats.put("dailyOrders", orderRepository.getDailyOrdersLast7Days());
-        stats.put("topSellers", orderRepository.getTopSellers());
-        stats.put("topProducts", orderRepository.getTopProducts());
+        stats.put("dailyRevenue", orderRepository.getRevenueByTimeframe(startDate));
+        stats.put("dailyOrders", orderRepository.getOrdersByTimeframe(startDate));
+        stats.put("topSellers", orderRepository.getTopSellersByTimeframe(startDate));
+        stats.put("topProducts", orderRepository.getTopProductsByTimeframe(startDate));
         
         return stats;
     }

@@ -91,7 +91,8 @@ public class OrderController {
     }
 
     @GetMapping("/admin/statistics")
-    public ResponseEntity<Map<String, Object>> getAdminStatistics() {
-        return ResponseEntity.ok(orderService.getAdminStatistics());
+    public ResponseEntity<Map<String, Object>> getAdminStatistics(
+            @RequestParam(defaultValue = "month") String timeframe) {
+        return ResponseEntity.ok(orderService.getAdminStatistics(timeframe));
     }
 }

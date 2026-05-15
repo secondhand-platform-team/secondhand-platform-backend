@@ -76,27 +76,51 @@ public class AdminUserController {
     }
 
     @GetMapping("/statistics")
-    public ResponseEntity<Map<String, Object>> getUserStatistics() {
+    public ResponseEntity<Map<String, Object>> getUserStatistics(
+            @RequestParam(defaultValue = "month") String timeframe) {
         List<User> allUsers = userRepository.findAll();
 
-        long totalUsers = allUsers.size();
-        long activeUsers = allUsers.stream().filter(User::isStatus).count();
+        LocalDate startDate;
+        switch (timeframe.toLowerCase()) {
+            case "day":
+                startDate = LocalDate.now();
+                break;
+            case "week":
+                startDate = LocalDate.now().minusDays(7);
+                break;
+            case "year":
+                startDate = LocalDate.now().minusYears(1);
+                break;
+            case "month":
+            default:
+                startDate = LocalDate.now().minusDays(30);
+                break;
+        }
+
+        long totalUsers = allUsers.stream()
+                .filter(u -> u.getCreatedAt() != null && !u.getCreatedAt().isBefore(startDate))
+                .count();
+
+        long activeUsers = allUsers.stream()
+                .filter(u -> u.isStatus() && u.getCreatedAt() != null && !u.getCreatedAt().isBefore(startDate))
+                .count();
+
         long lockedUsers = totalUsers - activeUsers;
 
-        long staffCount = allUsers.stream().filter(u -> u.getRole() == Role.STAFF).count();
-        long adminCount = allUsers.stream().filter(u -> u.getRole() == Role.ADMIN).count();
+        long staffCount = allUsers.stream()
+                .filter(u -> u.getRole() == Role.STAFF && u.getCreatedAt() != null && !u.getCreatedAt().isBefore(startDate))
+                .count();
+
+        long adminCount = allUsers.stream()
+                .filter(u -> u.getRole() == Role.ADMIN && u.getCreatedAt() != null && !u.getCreatedAt().isBefore(startDate))
+                .count();
+
         long standardUsers = totalUsers - staffCount - adminCount;
 
-        // Group registrations by creation date (last 7 days)
+        // Group registrations by creation date within timeframe
         Map<LocalDate, Long> registrationStats = allUsers.stream()
-                .filter(u -> u.getCreatedAt() != null && u.getCreatedAt().isAfter(LocalDate.now().minusDays(7)))
+                .filter(u -> u.getCreatedAt() != null && !u.getCreatedAt().isBefore(startDate))
                 .collect(Collectors.groupingBy(User::getCreatedAt, Collectors.counting()));
-
-        // Ensure days with 0 registrations are populated
-        for (int i = 0; i < 7; i++) {
-            LocalDate date = LocalDate.now().minusDays(i);
-            registrationStats.putIfAbsent(date, 0L);
-        }
 
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalUsers", totalUsers);
