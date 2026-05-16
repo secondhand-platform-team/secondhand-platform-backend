@@ -75,6 +75,8 @@ public class ItemServiceImpl implements ItemService {
     private final CloudinaryService cloudinaryService;
     private final UserServiceClient userServiceClient;
     private final PaymentEventService paymentEventService;
+    private final com.secondhand.coreservice.service.WalletService walletService;
+    private final com.secondhand.coreservice.service.NotificationService notificationService;
 
     @Override
     public ItemResponse createItem(ItemRequest request) {
@@ -304,34 +306,76 @@ public class ItemServiceImpl implements ItemService {
 
         // Only create payment for SELL items (not FREE_SELL or GIVE_AWAY)
         if (isSell) {
-            try {
-                log.info("Creating payment for SELL item: {} with userId: {}", savedItem.getItemId(), userId);
+            String paymentMethod = request.getPaymentMethod() != null ? request.getPaymentMethod().toUpperCase() : "VNPAY";
+            
+            java.math.BigDecimal fee = request.getPostingFee();
+            if (fee == null) {
+                throw new BadRequestException("Posting fee is required for SELL items");
+            }
 
-                PaymentCreateResult paymentResponse = paymentEventService
-                        .createVnPayPayment(
-                                request.getPrice().longValue(),
-                                "NCB",
-                                "vn",
-                                userId);
+            if ("WALLET".equals(paymentMethod)) {
+                log.info("Paying for SELL item: {} with WALLET userId: {}", savedItem.getItemId(), userId);
+                try {
+                    // Trừ tiền trong ví theo postingFee
+                    walletService.deductFee(userId, fee, "Thanh toán đăng tin " + savedItem.getItemId());
 
-                if ("00".equals(paymentResponse.code())) {
-                    // Store transaction ID and payment URL in item for tracking
-                    savedItem.setTransactionId(paymentResponse.transactionId());
-                    savedItem.setPaymentUrl(paymentResponse.paymentUrl());
+                    // Cập nhật trạng thái item thành ACTIVE vì đã thanh toán thành công bằng ví
+                    savedItem.setStatus(ItemStatus.ACTIVE);
+                    savedItem.setTransactionId("WALLET-" + System.currentTimeMillis());
+                    savedItem.setUpdatedAt(LocalDateTime.now());
                     itemRepository.save(savedItem);
-                    log.info("Payment created successfully - TransactionId: {}", paymentResponse.transactionId());
-                } else {
-                    log.error("Failed to create payment: {}", paymentResponse.message());
-                    throw new BadRequestException("Failed to create payment: " + paymentResponse.message());
+                    log.info("Wallet payment successful, item {} is now ACTIVE", savedItem.getItemId());
+
+                    // Send notification for successful posting via wallet
+                    notificationService.createAndSendNotification(
+                            userId,
+                            "Chúc mừng! Tin đăng \"" + savedItem.getTitle() + "\" của bạn đã được duyệt thành công.",
+                            com.secondhand.coreservice.model.enums.NotificationType.SYSTEM,
+                            savedItem.getItemId());
+                } catch (Exception e) {
+                    log.error("Failed to pay with WALLET: {}", e.getMessage());
+                    itemRepository.delete(savedItem);
+                    throw new BadRequestException("Wallet payment failed: " + e.getMessage());
                 }
-            } catch (Exception e) {
-                log.error("Error creating payment for item", e);
-                // Delete the draft item if payment creation fails
-                itemRepository.delete(savedItem);
-                throw new BadRequestException("Failed to create payment: " + e.getMessage());
+            } else {
+                try {
+                    log.info("Creating external payment link for SELL item: {} with userId: {}, method: {}",
+                            savedItem.getItemId(), userId, paymentMethod);
+
+                    String itemCallbackUrl = "http://localhost:8000/core/api/items/payment-callback";
+                    PaymentCreateResult paymentResponse = paymentEventService
+                            .createVnPayPayment(
+                                    fee.longValue(),
+                                    "NCB",
+                                    "vn",
+                                    userId,
+                                    itemCallbackUrl);
+
+                    if ("00".equals(paymentResponse.code())) {
+                        // Store transaction ID and payment URL in item for tracking
+                        savedItem.setTransactionId(paymentResponse.transactionId());
+                        savedItem.setPaymentUrl(paymentResponse.paymentUrl());
+                        itemRepository.save(savedItem);
+                        log.info("Payment created successfully - TransactionId: {}", paymentResponse.transactionId());
+                    } else {
+                        log.error("Failed to create payment: {}", paymentResponse.message());
+                        throw new BadRequestException("Failed to create payment: " + paymentResponse.message());
+                    }
+                } catch (Exception e) {
+                    log.error("Error creating payment for item", e);
+                    // Delete the draft item if payment creation fails
+                    itemRepository.delete(savedItem);
+                    throw new BadRequestException("Failed to create payment: " + e.getMessage());
+                }
             }
         } else {
             log.info("Item created directly as ACTIVE - no payment needed (type: {})", transactionType);
+            // Send notification for successful posting (GIVE_AWAY or FREE_SELL)
+            notificationService.createAndSendNotification(
+                    userId,
+                    "Chúc mừng! Tin đăng \"" + savedItem.getTitle() + "\" của bạn đã được duyệt thành công.",
+                    com.secondhand.coreservice.model.enums.NotificationType.SYSTEM,
+                    savedItem.getItemId());
         }
 
         return mapToItemResponse(savedItem);
@@ -975,6 +1019,14 @@ public class ItemServiceImpl implements ItemService {
             }
 
             log.info("Item {} activated after successful payment", targetItem.getItemId());
+
+            // Send notification for successful posting after payment
+            notificationService.createAndSendNotification(
+                targetItem.getUserId(),
+                "Chúc mừng! Tin đăng \"" + targetItem.getTitle() + "\" của bạn đã được duyệt thành công.",
+                com.secondhand.coreservice.model.enums.NotificationType.SYSTEM,
+                targetItem.getItemId()
+            );
         } catch (Exception e) {
             log.error("Error processing VNPay callback", e);
             throw new RuntimeException("Failed to process payment callback: " + e.getMessage(), e);

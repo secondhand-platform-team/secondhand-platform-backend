@@ -41,6 +41,12 @@ public class ItemRequest {
 
     private List<ItemAttributeRequest> attributes;
 
+    // "WALLET" or "VNPAY"
+    private String paymentMethod;
+    
+    // Fee for posting the item
+    private BigDecimal postingFee;
+
     // Payment verification fields
     private String transactionId;
 

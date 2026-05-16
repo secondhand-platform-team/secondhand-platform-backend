@@ -2,6 +2,8 @@ package com.secondhand.orderservice.service.impl;
 
 import com.secondhand.orderservice.config.VnPayConfig;
 import com.secondhand.orderservice.dto.request.CreatePaymentRequest;
+//import com.secondhand.orderservice.dto.request.PaymentFilterRequest;
+import com.secondhand.orderservice.dto.response.AdminPaymentResponse;
 import com.secondhand.orderservice.dto.response.PaymentResponse;
 import com.secondhand.orderservice.model.Payment;
 import com.secondhand.orderservice.model.enums.PaymentMethod;
@@ -12,7 +14,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import jakarta.persistence.criteria.Predicate;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -139,7 +145,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public PaymentResponse createVnPayPaymentInternal(Long amount, String bankCode, String language, String userId) {
+    public PaymentResponse createVnPayPaymentInternal(Long amount, String bankCode, String language, String userId, String customReturnUrl) {
         CreatePaymentRequest request = new CreatePaymentRequest();
         request.setAmount(amount);
         request.setBankCode(bankCode);
@@ -170,7 +176,8 @@ public class PaymentServiceImpl implements PaymentService {
             vnp_Params.put("vnp_OrderInfo", "Thanh toan don hang");
             vnp_Params.put("vnp_OrderType", orderType);
             vnp_Params.put("vnp_Locale", language != null && !language.isEmpty() ? language : "vn");
-            vnp_Params.put("vnp_ReturnUrl", returnUrl != null ? returnUrl.trim() : VnPayConfig.vnp_ReturnUrl);
+            String finalReturnUrl = customReturnUrl != null && !customReturnUrl.isEmpty() ? customReturnUrl : (this.returnUrl != null ? this.returnUrl.trim() : VnPayConfig.vnp_ReturnUrl);
+            vnp_Params.put("vnp_ReturnUrl", finalReturnUrl);
             vnp_Params.put("vnp_IpAddr", ipAddr);
 
             TimeZone vnTimeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh");
@@ -281,4 +288,52 @@ public class PaymentServiceImpl implements PaymentService {
             log.error("Error updating payment status", e);
         }
     }
+
+    @Override
+    public Page<AdminPaymentResponse> getAllPayments(Pageable pageable, PaymentStatus status, LocalDateTime startDate, LocalDateTime endDate) {
+        Specification<Payment> spec = (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (status != null) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), status));
+            }
+
+            if (startDate != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), startDate));
+            }
+
+            if (endDate != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), endDate));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<Payment> payments = paymentRepository.findAll(spec, pageable);
+        return payments.map(this::mapToAdminPaymentResponse);
+    }
+
+
+    private AdminPaymentResponse mapToAdminPaymentResponse(Payment payment) {
+        return AdminPaymentResponse.builder()
+                .id(payment.getId())
+                .transactionId(payment.getTransactionId())
+                .amount(payment.getAmount())
+                .responseCode(payment.getResponseCode())
+                .method(payment.getMethod())
+                .status(payment.getStatus())
+                .paidAt(payment.getPaidAt())
+                .createdAt(payment.getCreatedAt())
+                .orderId(payment.getOrder() != null ? payment.getOrder().getId() : null)
+                .buyerId(payment.getOrder() != null ? payment.getOrder().getBuyerId() : null)
+                .build();
+    }
+
+    @Override
+    public AdminPaymentResponse getPaymentById(String id) {
+        Payment payment = paymentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Payment not found with id: " + id));
+        return mapToAdminPaymentResponse(payment);
+    }
 }
+
