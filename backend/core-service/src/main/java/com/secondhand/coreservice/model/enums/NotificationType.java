@@ -6,5 +6,7 @@ public enum NotificationType {
     ITEM_COMMENTED,
     ITEM_REPORTED,
     GIVEAWAY_REQUEST,
-    SYSTEM
+    SYSTEM,
+    WALLET_DEPOSIT_SUCCESS,
+    WALLET_DEDUCTION
 }

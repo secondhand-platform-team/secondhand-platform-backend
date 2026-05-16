@@ -27,9 +27,9 @@ public class InternalPaymentController {
 
     @PostMapping("/create")
     public ResponseEntity<Map<String, Object>> createPayment(@Valid @RequestBody CreateRequest request) {
-        log.info("Internal createPayment - amount={}, userId={}", request.amount(), request.userId());
+        log.info("Internal createPayment - amount={}, userId={}, returnUrl={}", request.amount(), request.userId(), request.returnUrl());
         PaymentResponse response = paymentService.createVnPayPaymentInternal(
-                request.amount(), request.bankCode(), request.language(), request.userId());
+                request.amount(), request.bankCode(), request.language(), request.userId(), request.returnUrl());
         return ResponseEntity.ok(Map.of(
                 "code", response.getCode(),
                 "message", response.getMessage(),
@@ -77,7 +77,8 @@ public class InternalPaymentController {
             @NotNull Long amount,
             String bankCode,
             String language,
-            @NotBlank String userId
+            @NotBlank String userId,
+            String returnUrl
     ) {}
 
     public record VerifyRequest(

@@ -43,7 +43,44 @@ public class PaymentRestClient {
                     (String) response.get("code"),
                     (String) response.get("message"),
                     (String) response.get("paymentUrl"),
-                    (String) response.get("transactionId")
+                    (String) response.get("transactionId"),
+                    null
+            );
+        } catch (RestClientException e) {
+            log.error("Failed to create VNPay payment via REST", e);
+            throw new BadRequestException("Failed to create payment: " + e.getMessage());
+        }
+    }
+
+    public PaymentCreateResult createVnPayPayment(Long amount, String bankCode, String language, String userId, String returnUrl) {
+        try {
+            log.info("REST createVnPayPayment - amount={}, userId={}, returnUrl={}", amount, userId, returnUrl);
+            
+            Map<String, Object> requestBody = new java.util.HashMap<>();
+            requestBody.put("amount", amount);
+            requestBody.put("bankCode", bankCode != null ? bankCode : "NCB");
+            requestBody.put("language", language != null ? language : "vn");
+            requestBody.put("userId", userId != null ? userId : "");
+            if (returnUrl != null && !returnUrl.trim().isEmpty()) {
+                requestBody.put("returnUrl", returnUrl.trim());
+            }
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> response = restClient.post()
+                    .uri("/api/internal/payments/create")
+                    .body(requestBody)
+                    .retrieve()
+                    .body(Map.class);
+
+            if (response == null) {
+                throw new BadRequestException("Empty response from order-service");
+            }
+            return new PaymentCreateResult(
+                    (String) response.get("code"),
+                    (String) response.get("message"),
+                    (String) response.get("paymentUrl"),
+                    (String) response.get("transactionId"),
+                    returnUrl
             );
         } catch (RestClientException e) {
             log.error("Failed to create VNPay payment via REST", e);
@@ -120,7 +157,7 @@ public class PaymentRestClient {
         }
     }
 
-    public record PaymentCreateResult(String code, String message, String paymentUrl, String transactionId) {}
+    public record PaymentCreateResult(String code, String message, String paymentUrl, String transactionId, String returnUrl) {}
     public record PaymentVerifyResult(boolean valid, String status, String message) {}
     public record PaymentStatusResult(String paymentId, String transactionId, String status,
                                       long amount, String method, String paidAt) {}
