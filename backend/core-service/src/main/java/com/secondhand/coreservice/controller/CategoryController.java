@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.secondhand.coreservice.dto.request.CategoryRequest;
+import com.secondhand.coreservice.dto.request.CategoryAttributeRequest;
 import com.secondhand.coreservice.dto.response.CategoryAttributeResponse;
 import com.secondhand.coreservice.dto.response.CategoryResponse;
 import com.secondhand.coreservice.dto.response.ItemResponse;
@@ -126,5 +127,30 @@ public class CategoryController {
                 categoryId, q, minPrice, maxPrice, condition, transactionType,
                 city, district, ward, page, size, sort);
         return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/{categoryId}/attributes")
+    public ResponseEntity<CategoryAttributeResponse> createCategoryAttribute(
+            @PathVariable String categoryId,
+            @Valid @RequestBody CategoryAttributeRequest request) {
+        CategoryAttributeResponse response = categoryService.createCategoryAttribute(categoryId, request);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{categoryId}/attributes/{attributeId}")
+    public ResponseEntity<CategoryAttributeResponse> updateCategoryAttribute(
+            @PathVariable String categoryId,
+            @PathVariable String attributeId,
+            @Valid @RequestBody CategoryAttributeRequest request) {
+        CategoryAttributeResponse response = categoryService.updateCategoryAttribute(categoryId, attributeId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{categoryId}/attributes/{attributeId}")
+    public ResponseEntity<MessageResponse> deleteCategoryAttribute(
+            @PathVariable String categoryId,
+            @PathVariable String attributeId) {
+        MessageResponse response = categoryService.deleteCategoryAttribute(categoryId, attributeId);
+        return ResponseEntity.ok(response);
     }
 }

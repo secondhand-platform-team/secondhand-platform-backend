@@ -60,16 +60,33 @@ public class AuthController {
     public ResponseEntity<LoginResponse> loginAdmin(
             @RequestBody LoginRequest request,
             HttpServletResponse response) {
-        // Admin portal accepts both STAFF and ADMIN roles
-        User user = userRepository.findByEmailOrPhoneNumber(request.getEmail(), request.getEmail())
-                .orElseThrow(() -> new BadRequestException(
-                        "Không có tài khoản nào được đăng ký bằng email hoặc số điện thoại này trong hệ thống."));
+        return doLogin(request, Role.ADMIN, response);
+    }
 
-        if (user.getRole() != Role.STAFF && user.getRole() != Role.ADMIN) {
-            throw new BadRequestException("Only STAFF and ADMIN can access admin portal");
+    @PostMapping("/login/google")
+    public ResponseEntity<LoginResponse> loginGoogle(
+            @RequestBody @Valid com.secondhand.authservice.dto.request.GoogleLoginRequest request,
+            HttpServletResponse response) {
+        AuthResponse authResponse = authService.loginWithGoogle(request.getIdToken());
+        UserProfileInfoResponse profile = authService.getCurrentUserProfile(payloadEmail(request.getIdToken()));
+
+        // Set tokens as HttpOnly cookies
+        response.addHeader(HttpHeaders.SET_COOKIE,
+                authCookieUtils.createAccessTokenCookie(authResponse.getAccessToken()).toString());
+        response.addHeader(HttpHeaders.SET_COOKIE,
+                authCookieUtils.createRefreshTokenCookie(authResponse.getRefreshToken()).toString());
+
+        return ResponseEntity.ok(new LoginResponse(profile.getUser(), profile.getUserProfile()));
+    }
+
+    private String payloadEmail(String idToken) {
+        // Simple extraction for the response, the actual verification happens in service
+        try {
+            return com.google.api.client.googleapis.auth.oauth2.GoogleIdToken.parse(
+                    new com.google.api.client.json.gson.GsonFactory(), idToken).getPayload().getEmail();
+        } catch (Exception e) {
+            throw new BadRequestException("ID Token không hợp lệ.");
         }
-
-        return doLogin(request, user.getRole(), response);
     }
 
     private ResponseEntity<LoginResponse> doLogin(

@@ -56,11 +56,18 @@ public class CategoryServiceImpl implements CategoryService {
             throw new BadRequestException("Category with slug '" + slug + "' already exists");
         }
 
+        Category parent = null;
+        if (request.getParentId() != null && !request.getParentId().isBlank()) {
+            parent = categoryRepository.findById(request.getParentId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Parent category not found with id: " + request.getParentId()));
+        }
+
         Category category = Category.builder()
                 .name(request.getName())
                 .slug(slug)
                 .description(request.getDescription())
                 .postingFee(request.getPostingFee() != null ? request.getPostingFee() : 0L)
+                .parent(parent)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -114,6 +121,16 @@ public class CategoryServiceImpl implements CategoryService {
         category.setDescription(request.getDescription());
         if (request.getPostingFee() != null) {
             category.setPostingFee(request.getPostingFee());
+        }
+        if (request.getParentId() != null && !request.getParentId().isBlank()) {
+            if (request.getParentId().equals(categoryId)) {
+                throw new BadRequestException("A category cannot be its own parent");
+            }
+            Category parent = categoryRepository.findById(request.getParentId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Parent category not found with id: " + request.getParentId()));
+            category.setParent(parent);
+        } else {
+            category.setParent(null);
         }
         category.setUpdatedAt(LocalDateTime.now());
 
@@ -318,5 +335,105 @@ public class CategoryServiceImpl implements CategoryService {
                 .location(locationResponse)
                 .itemImageList(imageResponses)
                 .build();
+    }
+
+    @Override
+    public CategoryAttributeResponse createCategoryAttribute(String categoryId, com.secondhand.coreservice.dto.request.CategoryAttributeRequest request) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryId));
+
+        if (categoryAttributeRepository.existsByCategory_CategoryIdAndCode(categoryId, request.getCode())) {
+            throw new BadRequestException("Attribute with code '" + request.getCode() + "' already exists in this category");
+        }
+
+        com.secondhand.coreservice.model.enums.AttributeDataType dataTypeEnum;
+        try {
+            dataTypeEnum = com.secondhand.coreservice.model.enums.AttributeDataType.valueOf(request.getDataType().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid data type: " + request.getDataType());
+        }
+
+        CategoryAttribute attribute = CategoryAttribute.builder()
+                .category(category)
+                .code(request.getCode())
+                .name(request.getName())
+                .description(request.getDescription())
+                .dataType(dataTypeEnum)
+                .unit(request.getUnit())
+                .required(request.getRequired())
+                .filterable(request.getFilterable())
+                .searchable(request.getSearchable())
+                .minValueNumber(request.getMinValueNumber())
+                .maxValueNumber(request.getMaxValueNumber())
+                .optionsJson(request.getOptionsJson())
+                .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        CategoryAttribute savedAttribute = categoryAttributeRepository.save(attribute);
+        return mapToCategoryAttributeResponse(savedAttribute);
+    }
+
+    @Override
+    public CategoryAttributeResponse updateCategoryAttribute(String categoryId, String attributeId, com.secondhand.coreservice.dto.request.CategoryAttributeRequest request) {
+        if (!categoryRepository.existsById(categoryId)) {
+            throw new ResourceNotFoundException("Category not found with id: " + categoryId);
+        }
+
+        CategoryAttribute attribute = categoryAttributeRepository.findById(attributeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Attribute not found with id: " + attributeId));
+
+        if (!attribute.getCategory().getCategoryId().equals(categoryId)) {
+            throw new BadRequestException("Attribute does not belong to the specified category");
+        }
+
+        if (!attribute.getCode().equals(request.getCode()) &&
+            categoryAttributeRepository.existsByCategory_CategoryIdAndCode(categoryId, request.getCode())) {
+            throw new BadRequestException("Attribute with code '" + request.getCode() + "' already exists in this category");
+        }
+
+        com.secondhand.coreservice.model.enums.AttributeDataType dataTypeEnum;
+        try {
+            dataTypeEnum = com.secondhand.coreservice.model.enums.AttributeDataType.valueOf(request.getDataType().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid data type: " + request.getDataType());
+        }
+
+        attribute.setCode(request.getCode());
+        attribute.setName(request.getName());
+        attribute.setDescription(request.getDescription());
+        attribute.setDataType(dataTypeEnum);
+        attribute.setUnit(request.getUnit());
+        attribute.setRequired(request.getRequired());
+        attribute.setFilterable(request.getFilterable());
+        attribute.setSearchable(request.getSearchable());
+        attribute.setMinValueNumber(request.getMinValueNumber());
+        attribute.setMaxValueNumber(request.getMaxValueNumber());
+        attribute.setOptionsJson(request.getOptionsJson());
+        if (request.getSortOrder() != null) {
+            attribute.setSortOrder(request.getSortOrder());
+        }
+        attribute.setUpdatedAt(LocalDateTime.now());
+
+        CategoryAttribute savedAttribute = categoryAttributeRepository.save(attribute);
+        return mapToCategoryAttributeResponse(savedAttribute);
+    }
+
+    @Override
+    public MessageResponse deleteCategoryAttribute(String categoryId, String attributeId) {
+        if (!categoryRepository.existsById(categoryId)) {
+            throw new ResourceNotFoundException("Category not found with id: " + categoryId);
+        }
+
+        CategoryAttribute attribute = categoryAttributeRepository.findById(attributeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Attribute not found with id: " + attributeId));
+
+        if (!attribute.getCategory().getCategoryId().equals(categoryId)) {
+            throw new BadRequestException("Attribute does not belong to the specified category");
+        }
+
+        categoryAttributeRepository.delete(attribute);
+        return new MessageResponse("Category attribute deleted successfully", true);
     }
 }

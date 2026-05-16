@@ -13,7 +13,7 @@ import java.util.List;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
+@ToString(exclude = {"orderItems", "payment", "shipment"})
 @Entity
 @Table(name = "orders")
 public class Order {
@@ -44,14 +44,14 @@ public class Order {
     private LocalDateTime updatedAt;
 
     // 1 Order -> nhiều OrderItem
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<OrderItem> orderItems;
 
     // 1 Order -> 1 Payment
-    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private Payment payment;
 
     // 1 Order -> 1 Shipment
-    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private Shipment shipment;
 }
