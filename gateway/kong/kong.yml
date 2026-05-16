@@ -20,6 +20,9 @@ plugins:
         - Authorization
         - Content-Type
         - X-Requested-With
+        - Origin
+        - Cookie
+        - Set-Cookie
       exposed_headers:
         - Set-Cookie
       credentials: true
