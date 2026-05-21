@@ -20,6 +20,7 @@ plugins:
         - Authorization
         - Content-Type
         - X-Requested-With
+        - X-Client-Type
         - Origin
         - Cookie
         - Set-Cookie
