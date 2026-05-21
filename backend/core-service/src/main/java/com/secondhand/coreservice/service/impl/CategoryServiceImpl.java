@@ -270,7 +270,6 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = "itemsSearchByCategory", key = "T(String).format('%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s', #categoryId, #keyword, #minPrice, #maxPrice, #condition, #transactionType, #city, #district, #ward, #page, #size, #sort)")
     public Page<ItemResponse> searchItemsByCategory(
             String categoryId,
             String keyword,

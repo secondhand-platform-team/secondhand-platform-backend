@@ -37,19 +37,28 @@ public class SearchHistoryServiceImpl implements SearchHistoryService {
             JwtAuthenticatedUser user = (JwtAuthenticatedUser) authentication.getPrincipal();
             return user.userId();
         }
-        throw new RuntimeException("Unauthorized");
+        return null;
     }
 
     @Override
     public SearchHistoryResponse saveSearchHistory(SearchHistoryRequest request) {
         String userId = getCurrentUserId();
 
-        log.info("Saving search history for user: {} with query: {}", userId, request.getSearchQuery());
-
         String query = request.getSearchQuery().trim();
         if (query.isEmpty()) {
             throw new IllegalArgumentException("Search query cannot be empty");
         }
+
+        if (userId == null) {
+            return SearchHistoryResponse.builder()
+                .searchQuery(query)
+                .categoryId(request.getCategoryId())
+                .resultCount(request.getResultCount())
+                .createdAt(LocalDateTime.now())
+                .build();
+        }
+
+        log.info("Saving search history for user: {} with query: {}", userId, query);
 
         SearchHistory history = SearchHistory.builder()
                 .userId(userId)
@@ -68,6 +77,9 @@ public class SearchHistoryServiceImpl implements SearchHistoryService {
     @Transactional(readOnly = true)
     public Page<SearchHistoryResponse> getSearchHistory(Pageable pageable) {
         String userId = getCurrentUserId();
+        if (userId == null) {
+            return Page.empty();
+        }
 
         log.debug("Getting search history for user: {}", userId);
 
@@ -81,6 +93,9 @@ public class SearchHistoryServiceImpl implements SearchHistoryService {
     @Transactional(readOnly = true)
     public List<SearchHistoryResponse> getRecentSearches() {
         String userId = getCurrentUserId();
+        if (userId == null) {
+            return java.util.Collections.emptyList();
+        }
 
         log.debug("Getting recent searches for user: {}", userId);
 
@@ -96,6 +111,9 @@ public class SearchHistoryServiceImpl implements SearchHistoryService {
     @Transactional(readOnly = true)
     public List<String> getSearchSuggestions() {
         String userId = getCurrentUserId();
+        if (userId == null) {
+            return java.util.Collections.emptyList();
+        }
 
         log.debug("Getting search suggestions for user: {}", userId);
 
@@ -129,7 +147,7 @@ public class SearchHistoryServiceImpl implements SearchHistoryService {
                 .orElseThrow(() -> new RuntimeException("Search history not found"));
 
         String userId = getCurrentUserId();
-        if (!history.getUserId().equals(userId)) {
+        if (userId == null || !history.getUserId().equals(userId)) {
             throw new SecurityException("Unauthorized to delete this search history");
         }
 
@@ -139,6 +157,9 @@ public class SearchHistoryServiceImpl implements SearchHistoryService {
     @Override
     public void clearSearchHistory() {
         String userId = getCurrentUserId();
+        if (userId == null) {
+            return;
+        }
 
         log.info("Clearing all search history for user: {}", userId);
 
@@ -157,6 +178,9 @@ public class SearchHistoryServiceImpl implements SearchHistoryService {
     @Transactional(readOnly = true)
     public Page<SearchHistoryResponse> getSearchHistoryByCategory(String categoryId, Pageable pageable) {
         String userId = getCurrentUserId();
+        if (userId == null) {
+            return Page.empty();
+        }
 
         log.debug("Getting search history by category: {} for user: {}", categoryId, userId);
 

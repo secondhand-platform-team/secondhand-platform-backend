@@ -81,14 +81,14 @@ public class ItemServiceImpl implements ItemService {
     private final com.secondhand.coreservice.service.NotificationService notificationService;
 
     @Override
-    @CacheEvict(cacheNames = {"itemsAll", "itemsPage", "itemsSearch", "itemsByCategory", "itemsByCategorySlug", "itemsFeatured", "itemsSearchByCategory"}, allEntries = true)
+    @CacheEvict(cacheNames = {"itemsAll", "itemsByCategory", "itemsByCategorySlug", "itemsFeatured"}, allEntries = true)
     public ItemResponse createItem(ItemRequest request) {
         return createItem(request, null);
     }
 
     @Override
     @Transactional
-    @CacheEvict(cacheNames = {"itemsAll", "itemsPage", "itemsSearch", "itemsByCategory", "itemsByCategorySlug", "itemsFeatured", "itemsSearchByCategory"}, allEntries = true)
+    @CacheEvict(cacheNames = {"itemsAll", "itemsByCategory", "itemsByCategorySlug", "itemsFeatured"}, allEntries = true)
     public ItemResponse createItem(ItemRequest request, MultipartFile[] images) {
         log.info("Creating item: {} with {} images", request.getTitle(), images != null ? images.length : 0);
 
@@ -401,7 +401,6 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = "itemsAll")
     public List<ItemResponse> getAllItems() {
         List<Item> items = itemRepository.findAllNotDeleted();
         return items.stream()
@@ -411,7 +410,6 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = "itemsPage", key = "T(String).format('%s:%s:%s', #page, #size, #sort)")
     public Page<ItemResponse> getAllItemsPaginated(int page, int size, String sort) {
         Sort sortOrder = "oldest".equals(sort)
                 ? Sort.by("createdAt").ascending()
@@ -442,7 +440,6 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = "itemsSearch", key = "T(String).format('%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s', #keyword, #categoryId, #minPrice, #maxPrice, #condition, #transactionType, #city, #district, #ward, #page, #size, #sort)")
     public Page<ItemResponse> searchItems(
             String keyword,
             String categoryId,
@@ -547,7 +544,6 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = "itemsFeatured", key = "#limit")
     public List<ItemResponse> getFeaturedItems(int limit) {
         Pageable pageable = PageRequest.of(0, limit, Sort.by("createdAt").descending());
         List<Item> items = itemRepository.findTopActiveItems(pageable);
@@ -558,7 +554,6 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = "itemsByCategory", key = "#categoryId")
     public List<ItemResponse> getItemsByCategory(String categoryId) {
         if (!categoryRepository.existsById(categoryId)) {
             throw new ResourceNotFoundException("Category not found with id: " + categoryId);
@@ -572,7 +567,6 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = "itemsByCategorySlug", key = "#slug")
     public List<ItemResponse> getItemsByCategorySlug(String slug) {
         if (!categoryRepository.existsBySlug(slug)) {
             throw new ResourceNotFoundException("Category not found with slug: " + slug);
@@ -595,7 +589,7 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    @CacheEvict(cacheNames = {"itemsAll", "itemsPage", "itemsSearch", "itemsByCategory", "itemsByCategorySlug", "itemsFeatured", "itemsSearchByCategory"}, allEntries = true)
+    @CacheEvict(cacheNames = {"itemsAll", "itemsByCategory", "itemsByCategorySlug", "itemsFeatured"}, allEntries = true)
     public ItemResponse updateItem(String itemId, ItemRequest request) {
         String currentUserId = getCurrentUserId();
 
@@ -698,7 +692,7 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    @CacheEvict(cacheNames = {"itemsAll", "itemsPage", "itemsSearch", "itemsByCategory", "itemsByCategorySlug", "itemsFeatured", "itemsSearchByCategory"}, allEntries = true)
+    @CacheEvict(cacheNames = {"itemsAll", "itemsByCategory", "itemsByCategorySlug", "itemsFeatured"}, allEntries = true)
     public ItemResponse updateItemStatus(String itemId, String status) {
         String currentUserId = getCurrentUserId();
 
@@ -724,7 +718,7 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    @CacheEvict(cacheNames = {"itemsAll", "itemsPage", "itemsSearch", "itemsByCategory", "itemsByCategorySlug", "itemsFeatured", "itemsSearchByCategory"}, allEntries = true)
+    @CacheEvict(cacheNames = {"itemsAll", "itemsByCategory", "itemsByCategorySlug", "itemsFeatured"}, allEntries = true)
     public MessageResponse deleteItem(String itemId) {
         String currentUserId = getCurrentUserId();
 

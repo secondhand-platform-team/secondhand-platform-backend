@@ -2,6 +2,7 @@
 HTTP Client gọi đến core-service (Spring Boot) qua Kong Gateway.
 AI Service KHÔNG query DB trực tiếp — luôn gọi qua REST API.
 """
+# pyrefly: ignore [missing-import]
 import httpx
 import logging
 from typing import Optional
