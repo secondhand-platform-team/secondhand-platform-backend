@@ -71,16 +71,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         return authHeader.substring(BEARER_PREFIX.length());
                 }
 
-                return extractAccessTokenFromCookies(request.getCookies());
+                return extractAccessTokenFromCookies(request);
         }
 
-        private String extractAccessTokenFromCookies(Cookie[] cookies) {
+        private String extractAccessTokenFromCookies(HttpServletRequest request) {
+                String clientType = request.getHeader("X-Client-Type");
+                if (clientType != null && !clientType.isBlank()) {
+                        if ("admin".equalsIgnoreCase(clientType)) {
+                                return extractCookieValue(request.getCookies(), AuthCookieUtils.ACCESS_TOKEN_COOKIE_NAME_ADMIN);
+                        }
+                        if ("user".equalsIgnoreCase(clientType)) {
+                                return extractCookieValue(request.getCookies(), AuthCookieUtils.ACCESS_TOKEN_COOKIE_NAME_USER);
+                        }
+                }
+
+                String path = request.getServletPath();
+                if (path != null && path.startsWith("/api/admin")) {
+                        return extractCookieValue(request.getCookies(), AuthCookieUtils.ACCESS_TOKEN_COOKIE_NAME_ADMIN);
+                }
+
+                return extractCookieValue(request.getCookies(), AuthCookieUtils.ACCESS_TOKEN_COOKIE_NAME_USER);
+        }
+
+        private String extractCookieValue(Cookie[] cookies, String cookieName) {
                 if (cookies == null) {
                         return null;
                 }
 
                 for (Cookie cookie : cookies) {
-                        if (AuthCookieUtils.ACCESS_TOKEN_COOKIE_NAME.equals(cookie.getName())) {
+                        if (cookieName.equals(cookie.getName())) {
                                 return cookie.getValue();
                         }
                 }
