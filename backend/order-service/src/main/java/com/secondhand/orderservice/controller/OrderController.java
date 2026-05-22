@@ -95,4 +95,44 @@ public class OrderController {
             @RequestParam(defaultValue = "month") String timeframe) {
         return ResponseEntity.ok(orderService.getAdminStatistics(timeframe));
     }
+
+    // ==================== SELLER ENDPOINTS ====================
+
+    @GetMapping("/seller")
+    public ResponseEntity<List<Order>> getSellerOrders(
+            @AuthenticationPrincipal JwtAuthenticatedUser user) {
+        return ResponseEntity.ok(orderService.getOrdersBySellerId(user.userId()));
+    }
+
+    @PutMapping("/seller/{orderId}/cancel")
+    public ResponseEntity<Order> cancelOrderBySeller(
+            @AuthenticationPrincipal JwtAuthenticatedUser user,
+            @PathVariable String orderId) {
+        return ResponseEntity.ok(orderService.cancelOrderBySeller(orderId, user.userId()));
+    }
+
+    @PutMapping("/seller/{orderId}/status")
+    public ResponseEntity<Order> updateOrderStatusBySeller(
+            @AuthenticationPrincipal JwtAuthenticatedUser user,
+            @PathVariable String orderId,
+            @RequestBody Map<String, String> body) {
+        String status = body.get("status");
+        return ResponseEntity.ok(orderService.updateOrderStatusBySeller(orderId, user.userId(), status));
+    }
+
+    @PostMapping("/seller/{orderId}/shipment")
+    public ResponseEntity<Order> createShipmentBySeller(
+            @AuthenticationPrincipal JwtAuthenticatedUser user,
+            @PathVariable String orderId,
+            @RequestBody Shipment shipment) {
+        return ResponseEntity.ok(orderService.createShipmentBySeller(orderId, user.userId(), shipment));
+    }
+
+    @PutMapping("/seller/{orderId}/shipment")
+    public ResponseEntity<Order> updateShipmentBySeller(
+            @AuthenticationPrincipal JwtAuthenticatedUser user,
+            @PathVariable String orderId,
+            @RequestBody Shipment shipment) {
+        return ResponseEntity.ok(orderService.updateShipmentBySeller(orderId, user.userId(), shipment));
+    }
 }

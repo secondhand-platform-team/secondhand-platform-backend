@@ -38,4 +38,7 @@ public interface OrderRepository extends JpaRepository<Order, String> {
                    "FROM order_items oi JOIN orders o ON oi.order_id = o.id " +
                    "WHERE o.created_at >= :startDate GROUP BY oi.item_id, oi.item_name ORDER BY sales DESC LIMIT 5", nativeQuery = true)
     List<Object[]> getTopProductsByTimeframe(@Param("startDate") LocalDateTime startDate);
+
+    @Query("SELECT DISTINCT o FROM Order o JOIN o.orderItems oi WHERE oi.sellerId = :sellerId ORDER BY o.createdAt DESC")
+    List<Order> findBySellerIdOrderByCreatedAtDesc(@Param("sellerId") String sellerId);
 }

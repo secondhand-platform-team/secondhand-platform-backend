@@ -29,4 +29,15 @@ public interface OrderService {
 
     Order updateShipment(String orderId, Shipment shipment);
     java.util.Map<String, Object> getAdminStatistics(String timeframe);
+
+    // Seller operations
+    List<Order> getOrdersBySellerId(String sellerId);
+
+    Order cancelOrderBySeller(String orderId, String sellerId);
+
+    Order updateOrderStatusBySeller(String orderId, String sellerId, String status);
+
+    Order createShipmentBySeller(String orderId, String sellerId, Shipment shipment);
+
+    Order updateShipmentBySeller(String orderId, String sellerId, Shipment shipment);
 }

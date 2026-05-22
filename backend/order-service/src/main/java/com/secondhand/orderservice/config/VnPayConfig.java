@@ -18,7 +18,7 @@ public class VnPayConfig {
     public static String vnp_PayUrl = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
     public static String vnp_ReturnUrl = "http://localhost:3000/payment-callback";
     public static String vnp_TmnCode = "Q7T511E4";
-    public static String secretKey = "8V4FDJROI38BXRSYI98AYFW8F0H4R20M";
+    public static String secretKey = "UXWSJQI3XEBSAXP2WDEPBZL4TYWEQSA7";
     public static String vnp_ApiUrl = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
 
     @Value("${vnpay.pay-url:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}")
@@ -30,7 +30,7 @@ public class VnPayConfig {
     @Value("${vnpay.tmn-code:Q7T511E4}")
     private String tmnCode;
 
-    @Value("${vnpay.secret-key:8V4FDJROI38BXRSYI98AYFW8F0H4R20M}")
+    @Value("${vnpay.secret-key:UXWSJQI3XEBSAXP2WDEPBZL4TYWEQSA7}")
     private String secureKey;
 
     @Value("${vnpay.api-url:https://sandbox.vnpayment.vn/merchant_webapi/api/transaction}")
