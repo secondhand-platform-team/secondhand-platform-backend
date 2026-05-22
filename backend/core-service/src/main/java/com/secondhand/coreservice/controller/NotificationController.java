@@ -1,6 +1,7 @@
 package com.secondhand.coreservice.controller;
 
 import com.secondhand.coreservice.dto.response.NotificationResponse;
+import com.secondhand.coreservice.dto.request.CreateNotificationRequest;
 import com.secondhand.coreservice.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -35,6 +36,17 @@ public class NotificationController {
     @PutMapping("/read-all")
     public ResponseEntity<Void> markAllAsRead() {
         notificationService.markAllAsRead();
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/internal")
+    public ResponseEntity<Void> createNotificationInternal(@RequestBody CreateNotificationRequest request) {
+        notificationService.createAndSendNotification(
+                request.getUserId(),
+                request.getContent(),
+                com.secondhand.coreservice.model.enums.NotificationType.valueOf(request.getType()),
+                request.getItemId()
+        );
         return ResponseEntity.ok().build();
     }
 }

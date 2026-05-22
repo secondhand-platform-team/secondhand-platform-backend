@@ -19,6 +19,8 @@ public interface WalletService {
 
     void deductFee(String userId, java.math.BigDecimal amount, String description);
 
+    void addMoney(String userId, java.math.BigDecimal amount, String description);
+
     // Lịch sử giao dịch - lấy tất cả, sắp xếp mới nhất trước
     List<WalletTransactionResponse> getTransactionHistory();
 

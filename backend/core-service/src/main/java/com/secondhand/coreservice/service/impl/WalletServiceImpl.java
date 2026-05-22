@@ -6,6 +6,7 @@ import com.secondhand.coreservice.dto.request.VNPayCallbackRequest;
 import com.secondhand.coreservice.dto.response.WalletResponse;
 import com.secondhand.coreservice.dto.response.WalletTransactionResponse;
 import com.secondhand.coreservice.exception.BadRequestException;
+import com.secondhand.coreservice.exception.UnauthorizedException;
 import com.secondhand.coreservice.model.Wallet;
 import com.secondhand.coreservice.model.WalletTransaction;
 import com.secondhand.coreservice.model.enums.WalletTransactionStatus;
@@ -48,7 +49,7 @@ public class WalletServiceImpl implements WalletService {
             JwtAuthenticatedUser user = (JwtAuthenticatedUser) authentication.getPrincipal();
             return user.userId();
         }
-        throw new RuntimeException("Unauthorized");
+        throw new UnauthorizedException("Unauthorized");
     }
 
     @Override
@@ -119,6 +120,9 @@ public class WalletServiceImpl implements WalletService {
             }
 
         } catch (Exception e) {
+            if (e instanceof UnauthorizedException) {
+                throw (UnauthorizedException) e;
+            }
             log.error("Error creating deposit payment", e);
             return Map.of("code", "99", "message", "error: " + e.getMessage());
         }
@@ -222,6 +226,38 @@ public class WalletServiceImpl implements WalletService {
                 userId,
                 "Đã trừ " + amount.longValue() + " VNĐ từ ví: " + description,
                 NotificationType.WALLET_DEDUCTION,
+                null
+        );
+    }
+
+    @Override
+    @Transactional
+    public void addMoney(String userId, java.math.BigDecimal amount, String description) {
+        Wallet wallet = walletRepository.findByUserId(userId)
+                .orElseGet(() -> createNewWallet(userId));
+
+        // Add balance
+        wallet.setBalance(wallet.getBalance() + amount.longValue());
+        wallet.setUpdatedAt(LocalDateTime.now());
+        walletRepository.save(wallet);
+
+        // Create transaction record
+        WalletTransaction tx = new WalletTransaction();
+        tx.setId(UUID.randomUUID().toString());
+        tx.setWallet(wallet);
+        tx.setAmount((double) amount.longValue());
+        tx.setType(WalletTransactionType.DEPOSIT);
+        tx.setStatus(WalletTransactionStatus.SUCCESS);
+        tx.setReferenceId("EARN-" + System.currentTimeMillis());
+        tx.setCreatedAt(LocalDateTime.now());
+
+        walletTransactionRepository.save(tx);
+        log.info("Added {} to wallet of user {} for {}", amount, userId, description);
+
+        notificationService.createAndSendNotification(
+                userId,
+                "Ví của bạn đã được cộng " + amount.longValue() + " VNĐ: " + description,
+                NotificationType.WALLET_DEPOSIT_SUCCESS,
                 null
         );
     }

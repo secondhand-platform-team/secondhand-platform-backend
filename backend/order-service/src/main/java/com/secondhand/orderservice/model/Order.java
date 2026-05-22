@@ -54,4 +54,7 @@ public class Order {
     // 1 Order -> 1 Shipment
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private Shipment shipment;
+
+    @Transient
+    private String paymentUrl;
 }

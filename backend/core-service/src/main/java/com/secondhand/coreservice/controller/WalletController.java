@@ -114,4 +114,42 @@ public class WalletController {
         Page<WalletTransactionResponse> result = walletService.getTransactionHistoryPaged(page, size);
         return ResponseEntity.ok(result);
     }
+
+    /**
+     * API Nội bộ: Trừ tiền ví (gọi từ order-service)
+     * POST /api/wallet/internal/deduct
+     */
+    @PostMapping("/internal/deduct")
+    public ResponseEntity<Void> deductInternal(@RequestBody java.util.Map<String, Object> request) {
+        String userId = (String) request.get("userId");
+        Object amountObj = request.get("amount");
+        java.math.BigDecimal amount;
+        if (amountObj instanceof Number) {
+            amount = java.math.BigDecimal.valueOf(((Number) amountObj).doubleValue());
+        } else {
+            amount = new java.math.BigDecimal(amountObj.toString());
+        }
+        String description = (String) request.get("description");
+        walletService.deductFee(userId, amount, description);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * API Nội bộ: Cộng tiền ví (gọi từ order-service)
+     * POST /api/wallet/internal/add
+     */
+    @PostMapping("/internal/add")
+    public ResponseEntity<Void> addInternal(@RequestBody java.util.Map<String, Object> request) {
+        String userId = (String) request.get("userId");
+        Object amountObj = request.get("amount");
+        java.math.BigDecimal amount;
+        if (amountObj instanceof Number) {
+            amount = java.math.BigDecimal.valueOf(((Number) amountObj).doubleValue());
+        } else {
+            amount = new java.math.BigDecimal(amountObj.toString());
+        }
+        String description = (String) request.get("description");
+        walletService.addMoney(userId, amount, description);
+        return ResponseEntity.ok().build();
+    }
 }

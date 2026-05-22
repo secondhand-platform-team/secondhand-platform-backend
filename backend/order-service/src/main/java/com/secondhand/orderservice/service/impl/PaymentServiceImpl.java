@@ -247,6 +247,10 @@ public class PaymentServiceImpl implements PaymentService {
     public Boolean verifyVnPayCallback(HttpServletRequest request) {
         try {
             String vnp_SecureHash = request.getParameter("vnp_SecureHash");
+            if (vnp_SecureHash == null || vnp_SecureHash.isEmpty()) {
+                log.warn("verifyVnPayCallback - vnp_SecureHash is missing!");
+                return false;
+            }
 
             Map<String, String> fields = new HashMap<>();
             Enumeration<String> params = request.getParameterNames();
@@ -255,15 +259,39 @@ public class PaymentServiceImpl implements PaymentService {
                 String fieldName = params.nextElement();
                 String fieldValue = request.getParameter(fieldName);
 
-                if ((fieldValue != null) && (fieldValue.length() > 0) && !fieldName.equals("vnp_SecureHash")) {
+                if ((fieldValue != null) && (fieldValue.length() > 0) 
+                        && !fieldName.equals("vnp_SecureHash") 
+                        && !fieldName.equals("vnp_SecureHashType")) {
                     fields.put(fieldName, fieldValue);
                 }
             }
 
-            String vnp_SecureHashCheck = VnPayConfig.hashAllFields(fields);
+            List<String> fieldNames = new ArrayList<>(fields.keySet());
+            Collections.sort(fieldNames);
+            StringBuilder sb = new StringBuilder();
+            Iterator<String> itr = fieldNames.iterator();
+            while (itr.hasNext()) {
+                String fieldName = itr.next();
+                String fieldValue = fields.get(fieldName);
+                if ((fieldValue != null) && (fieldValue.length() > 0)) {
+                    sb.append(fieldName);
+                    sb.append("=");
+                    sb.append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
+                }
+                if (itr.hasNext()) {
+                    sb.append("&");
+                }
+            }
 
-            return vnp_SecureHashCheck.equals(vnp_SecureHash);
+            String secureKeyToUse = secretKey != null ? secretKey.trim() : VnPayConfig.secretKey;
+            String vnp_SecureHashCheck = VnPayConfig.hmacSHA512(secureKeyToUse, sb.toString());
+
+            log.info("verifyVnPayCallback - String to hash: {}", sb.toString());
+            log.info("verifyVnPayCallback - Calculated Hash: {}, VNPay Hash: {}", vnp_SecureHashCheck, vnp_SecureHash);
+
+            return vnp_SecureHashCheck.equalsIgnoreCase(vnp_SecureHash);
         } catch (Exception e) {
+            log.error("verifyVnPayCallback error", e);
             return false;
         }
     }
