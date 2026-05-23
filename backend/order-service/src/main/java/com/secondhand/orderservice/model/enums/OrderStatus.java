@@ -2,18 +2,23 @@ package com.secondhand.orderservice.model.enums;
 
 public enum OrderStatus {
 
-    PENDING,      // vừa tạo đơn
+    PENDING_PAYMENT,      // vừa tạo đơn, chờ thanh toán
 
-    CONFIRMED,    // seller xác nhận đơn
+    PAID,                 // đã thanh toán (tiền vào escrow)
 
-    PAID,         // đã thanh toán
+    PREPARING,            // seller đang chuẩn bị hàng
 
-    SHIPPING,     // đang giao
+    HANDOVER_TO_SHIPPER,  // seller đã giao cho shipper
 
-    DELIVERED,    // giao thành công
+    IN_TRANSIT,           // đang vận chuyển (shipper giả lập)
 
-    CANCELLED,    // hủy đơn
+    DELIVERED,            // đã giao hàng (shipper giả lập)
 
-    RETURNED      // trả hàng
+    RECEIVED,             // buyer xác nhận đã nhận
 
+    COMPLETED,            // hoàn tất (tiền released cho seller)
+
+    CANCELLED,            // đã hủy
+
+    DISPUTED              // tranh chấp
 }

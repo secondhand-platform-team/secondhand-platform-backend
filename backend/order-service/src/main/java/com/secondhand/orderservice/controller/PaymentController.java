@@ -33,6 +33,7 @@ public class PaymentController {
     private final OrderRepository orderRepository;
     private final NotificationClient notificationClient;
     private final com.secondhand.orderservice.service.CartService cartService;
+    private final com.secondhand.orderservice.service.WalletClient walletClient;
 
     @PostMapping("/create_payment")
     public ResponseEntity<PaymentResponse> createPayment(
@@ -125,6 +126,16 @@ public class PaymentController {
                     order.setPaymentStatus(PaymentStatus.PAID);
                     order.setUpdatedAt(now);
                     orderRepository.save(order);
+
+                    // Nạp tiền vào ví nội bộ từ giao dịch VNPay
+                    try {
+                        walletClient.add(order.getBuyerId(), payment.getAmount(), "Nạp tiền qua VNPay cho đơn hàng #" + order.getId().substring(0, 8).toUpperCase());
+                        walletClient.escrowHold(order.getBuyerId(), payment.getAmount(), order.getId());
+                        order.setEscrowTransactionId("ESCROW-HOLD-" + order.getId());
+                        orderRepository.save(order);
+                    } catch (Exception e) {
+                        // ignore if already done or failed
+                    }
 
                     // Xóa các sản phẩm đã mua khỏi giỏ hàng của người mua khi thanh toán thành công
                     try {

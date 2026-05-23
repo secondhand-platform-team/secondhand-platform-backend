@@ -189,6 +189,31 @@ public class ItemController {
         return ResponseEntity.ok(items);
     }
 
+    // ====== Internal Endpoint (gọi từ order-service, không cần auth) ======
+
+    /**
+     * API Nội bộ: Cập nhật status item từ order-service
+     * PUT /api/items/internal/{itemId}/status
+     */
+    @PutMapping("/internal/{itemId}/status")
+    public ResponseEntity<ItemResponse> updateItemStatusInternal(
+            @PathVariable String itemId,
+            @RequestBody java.util.Map<String, String> body) {
+        String status = body.get("status");
+        ItemResponse response = itemService.updateItemStatusInternal(itemId, status);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * API Nội bộ: Lấy thông tin item (không cần auth)
+     * GET /api/items/internal/{itemId}
+     */
+    @GetMapping("/internal/{itemId}")
+    public ResponseEntity<ItemResponse> getItemInternal(@PathVariable String itemId) {
+        ItemResponse item = itemService.getItemById(itemId);
+        return ResponseEntity.ok(item);
+    }
+
     @GetMapping("/payment-callback")
     public ResponseEntity<?> handleVNPayCallback(
             @RequestParam(required = false) String vnp_Amount,

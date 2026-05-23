@@ -17,4 +17,6 @@ public interface NotificationService {
     void markAllAsRead();
 
     long countUnreadNotifications();
+    
+    void deleteNotification(String notificationId);
 }

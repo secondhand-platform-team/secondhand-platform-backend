@@ -39,6 +39,12 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteNotification(@PathVariable String id) {
+        notificationService.deleteNotification(id);
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/internal")
     public ResponseEntity<Void> createNotificationInternal(@RequestBody CreateNotificationRequest request) {
         notificationService.createAndSendNotification(

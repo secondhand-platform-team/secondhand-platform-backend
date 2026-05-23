@@ -303,4 +303,112 @@ public class WalletServiceImpl implements WalletService {
                 .createdAt(tx.getCreatedAt())
                 .build();
     }
+
+    // ====================================================================
+    // Escrow Methods — P2P Secondhand Marketplace
+    // ====================================================================
+
+    @Override
+    @Transactional
+    public void escrowHold(String buyerId, double amount, String orderId) {
+        Wallet wallet = walletRepository.findByUserId(buyerId)
+                .orElseThrow(() -> new BadRequestException("Wallet not found for user: " + buyerId));
+
+        if (wallet.getBalance() < amount) {
+            throw new BadRequestException("Số dư ví không đủ. Vui lòng nạp thêm tiền.");
+        }
+
+        // Trừ tiền buyer
+        wallet.setBalance(wallet.getBalance() - amount);
+        wallet.setUpdatedAt(LocalDateTime.now());
+        walletRepository.save(wallet);
+
+        // Tạo transaction record ESCROW_HOLD
+        WalletTransaction tx = new WalletTransaction();
+        tx.setId(UUID.randomUUID().toString());
+        tx.setWallet(wallet);
+        tx.setAmount(amount);
+        tx.setType(WalletTransactionType.ESCROW_HOLD);
+        tx.setStatus(WalletTransactionStatus.PENDING);
+        tx.setReferenceId("ESCROW-HOLD-" + orderId);
+        tx.setCreatedAt(LocalDateTime.now());
+        walletTransactionRepository.save(tx);
+
+        log.info("Escrow HOLD - buyerId={}, amount={}, orderId={}, new balance={}",
+                buyerId, amount, orderId, wallet.getBalance());
+
+        notificationService.createAndSendNotification(
+                buyerId,
+                "Ví đã tạm giữ " + (long) amount + " VNĐ cho đơn hàng #" + orderId.substring(0, 8).toUpperCase(),
+                NotificationType.ESCROW_HOLD,
+                null
+        );
+    }
+
+    @Override
+    @Transactional
+    public void escrowRelease(String sellerId, double amount, String orderId) {
+        Wallet wallet = walletRepository.findByUserId(sellerId)
+                .orElseGet(() -> createNewWallet(sellerId));
+
+        // Cộng tiền cho seller
+        wallet.setBalance(wallet.getBalance() + amount);
+        wallet.setUpdatedAt(LocalDateTime.now());
+        walletRepository.save(wallet);
+
+        // Tạo transaction record ESCROW_RELEASE
+        WalletTransaction tx = new WalletTransaction();
+        tx.setId(UUID.randomUUID().toString());
+        tx.setWallet(wallet);
+        tx.setAmount(amount);
+        tx.setType(WalletTransactionType.ESCROW_RELEASE);
+        tx.setStatus(WalletTransactionStatus.SUCCESS);
+        tx.setReferenceId("ESCROW-RELEASE-" + orderId);
+        tx.setCreatedAt(LocalDateTime.now());
+        walletTransactionRepository.save(tx);
+
+        log.info("Escrow RELEASE - sellerId={}, amount={}, orderId={}, new balance={}",
+                sellerId, amount, orderId, wallet.getBalance());
+
+        notificationService.createAndSendNotification(
+                sellerId,
+                "Ví được cộng " + (long) amount + " VNĐ từ đơn hàng #" + orderId.substring(0, 8).toUpperCase(),
+                NotificationType.ESCROW_RELEASED,
+                null
+        );
+    }
+
+    @Override
+    @Transactional
+    public void escrowRefund(String buyerId, double amount, String orderId) {
+        Wallet wallet = walletRepository.findByUserId(buyerId)
+                .orElseThrow(() -> new BadRequestException("Wallet not found for user: " + buyerId));
+
+        // Hoàn tiền cho buyer
+        wallet.setBalance(wallet.getBalance() + amount);
+        wallet.setUpdatedAt(LocalDateTime.now());
+        walletRepository.save(wallet);
+
+        // Tạo transaction record ESCROW_REFUND
+        WalletTransaction tx = new WalletTransaction();
+        tx.setId(UUID.randomUUID().toString());
+        tx.setWallet(wallet);
+        tx.setAmount(amount);
+        tx.setType(WalletTransactionType.ESCROW_REFUND);
+        tx.setStatus(WalletTransactionStatus.SUCCESS);
+        tx.setReferenceId("ESCROW-REFUND-" + orderId);
+        tx.setCreatedAt(LocalDateTime.now());
+        walletTransactionRepository.save(tx);
+
+        log.info("Escrow REFUND - buyerId={}, amount={}, orderId={}, new balance={}",
+                buyerId, amount, orderId, wallet.getBalance());
+
+        notificationService.createAndSendNotification(
+                buyerId,
+                "Ví được hoàn " + (long) amount + " VNĐ từ đơn hàng #" + orderId.substring(0, 8).toUpperCase(),
+                NotificationType.ESCROW_REFUNDED,
+                null
+        );
+    }
 }
+

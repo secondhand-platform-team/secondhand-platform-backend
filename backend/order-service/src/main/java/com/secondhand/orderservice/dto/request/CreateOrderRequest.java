@@ -5,8 +5,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.List;
-
 @Getter
 @Setter
 @AllArgsConstructor
@@ -19,19 +17,7 @@ public class CreateOrderRequest {
 
     private String shippingAddress;
 
-    private String paymentMethod; // COD, BANK_TRANSFER, MOMO, VNPAY
+    private String paymentMethod; // WALLET, VNPAY
 
-    private List<OrderItemRequest> items;
-
-    @Getter
-    @Setter
-    @AllArgsConstructor
-    @NoArgsConstructor
-    public static class OrderItemRequest {
-        private String itemId;
-        private String itemName;
-        private String sellerId;
-        private Double price;
-        private Integer quantity;
-    }
+    private String itemId; // chỉ 1 item duy nhất (secondhand)
 }

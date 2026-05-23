@@ -26,5 +26,16 @@ public interface WalletService {
 
     // Lịch sử giao dịch - có phân trang
     Page<WalletTransactionResponse> getTransactionHistoryPaged(int page, int size);
+
+    // ====== Escrow Methods ======
+
+    /** Tạm giữ tiền buyer khi checkout → escrow */
+    void escrowHold(String buyerId, double amount, String orderId);
+
+    /** Release tiền từ escrow → ví seller khi hoàn tất */
+    void escrowRelease(String sellerId, double amount, String orderId);
+
+    /** Hoàn tiền từ escrow → ví buyer khi cancel/dispute */
+    void escrowRefund(String buyerId, double amount, String orderId);
 }
 

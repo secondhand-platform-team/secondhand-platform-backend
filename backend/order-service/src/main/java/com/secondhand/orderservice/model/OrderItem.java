@@ -24,7 +24,8 @@ public class OrderItem {
 
     private Double price;
 
-    private Integer quantity;
+    @Column(columnDefinition = "TEXT")
+    private String itemImageUrl;
 
     @ManyToOne
     @JoinColumn(name = "order_id")

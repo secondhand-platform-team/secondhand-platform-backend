@@ -24,6 +24,9 @@ public class Order {
     // buyer
     private String buyerId;
 
+    // seller (1 order = 1 item = 1 seller trong secondhand)
+    private String sellerId;
+
     private Double totalPrice;
 
     @Enumerated(EnumType.STRING)
@@ -38,6 +41,20 @@ public class Order {
     private String receiverPhone;
 
     private String shippingAddress;
+
+    // Escrow transaction tracking
+    private String escrowTransactionId;
+
+    // Auto-complete deadline (3 ngày sau khi DELIVERED)
+    private LocalDateTime autoCompleteAt;
+
+    // Lý do hủy đơn
+    @Column(columnDefinition = "TEXT")
+    private String cancelReason;
+
+    // Lý do tranh chấp
+    @Column(columnDefinition = "TEXT")
+    private String disputeReason;
 
     private LocalDateTime createdAt;
 

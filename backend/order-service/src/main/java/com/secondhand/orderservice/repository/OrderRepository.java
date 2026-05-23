@@ -1,6 +1,7 @@
 package com.secondhand.orderservice.repository;
 
 import com.secondhand.orderservice.model.Order;
+import com.secondhand.orderservice.model.enums.OrderStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,6 +18,21 @@ public interface OrderRepository extends JpaRepository<Order, String> {
 
     List<Order> findAllByOrderByCreatedAtDesc();
 
+    List<Order> findBySellerIdOrderByCreatedAtDesc(String sellerId);
+
+    List<Order> findByStatusOrderByUpdatedAtDesc(OrderStatus status);
+
+    // Tìm orders cần giả lập IN_TRANSIT (HANDOVER_TO_SHIPPER quá X giây)
+    @Query("SELECT o FROM Order o WHERE o.status = :status AND o.updatedAt <= :before")
+    List<Order> findByStatusAndUpdatedAtBefore(
+            @Param("status") OrderStatus status,
+            @Param("before") LocalDateTime before);
+
+    // Tìm orders cần auto-complete (DELIVERED quá deadline)
+    @Query("SELECT o FROM Order o WHERE o.status = 'DELIVERED' AND o.autoCompleteAt IS NOT NULL AND o.autoCompleteAt <= :now")
+    List<Order> findOrdersToAutoComplete(@Param("now") LocalDateTime now);
+
+    // Statistics
     @Query("SELECT SUM(o.totalPrice) FROM Order o WHERE o.status != 'CANCELLED' AND o.createdAt >= :startDate")
     Double getTotalRevenue(@Param("startDate") LocalDateTime startDate);
 
@@ -28,17 +44,4 @@ public interface OrderRepository extends JpaRepository<Order, String> {
 
     @Query(value = "SELECT CAST(created_at AS DATE) as date, COUNT(*) as count FROM orders WHERE created_at >= :startDate GROUP BY CAST(created_at AS DATE) ORDER BY date", nativeQuery = true)
     List<Object[]> getOrdersByTimeframe(@Param("startDate") LocalDateTime startDate);
-
-    @Query(value = "SELECT oi.seller_id, SUM(oi.price * oi.quantity) as revenue, COUNT(DISTINCT oi.order_id) as orders " +
-                   "FROM order_items oi JOIN orders o ON oi.order_id = o.id " +
-                   "WHERE o.created_at >= :startDate GROUP BY oi.seller_id ORDER BY revenue DESC LIMIT 5", nativeQuery = true)
-    List<Object[]> getTopSellersByTimeframe(@Param("startDate") LocalDateTime startDate);
-
-    @Query(value = "SELECT oi.item_id, oi.item_name, SUM(oi.quantity) as sales " +
-                   "FROM order_items oi JOIN orders o ON oi.order_id = o.id " +
-                   "WHERE o.created_at >= :startDate GROUP BY oi.item_id, oi.item_name ORDER BY sales DESC LIMIT 5", nativeQuery = true)
-    List<Object[]> getTopProductsByTimeframe(@Param("startDate") LocalDateTime startDate);
-
-    @Query("SELECT DISTINCT o FROM Order o JOIN o.orderItems oi WHERE oi.sellerId = :sellerId ORDER BY o.createdAt DESC")
-    List<Order> findBySellerIdOrderByCreatedAtDesc(@Param("sellerId") String sellerId);
 }

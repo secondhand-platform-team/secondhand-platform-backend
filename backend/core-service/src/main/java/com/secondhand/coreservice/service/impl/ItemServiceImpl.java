@@ -1051,4 +1051,30 @@ public class ItemServiceImpl implements ItemService {
         }
         throw new BadRequestException("User not authenticated or invalid JWT token");
     }
+
+    // ====================================================================
+    // Internal: cập nhật item status từ order-service (không cần auth)
+    // ====================================================================
+
+    @Override
+    @Transactional
+    @CacheEvict(cacheNames = {"itemsAll", "itemsByCategory", "itemsByCategorySlug", "itemsFeatured"}, allEntries = true)
+    public ItemResponse updateItemStatusInternal(String itemId, String status) {
+        Item item = itemRepository.findByItemId(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Item not found with id: " + itemId));
+
+        ItemStatus itemStatus;
+        try {
+            itemStatus = ItemStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            throw new BadRequestException("Invalid status: " + status);
+        }
+
+        item.setStatus(itemStatus);
+        item.setUpdatedAt(LocalDateTime.now());
+
+        Item updatedItem = itemRepository.save(item);
+        log.info("Item {} status updated internally to: {}", itemId, status);
+        return mapToItemResponse(updatedItem);
+    }
 }

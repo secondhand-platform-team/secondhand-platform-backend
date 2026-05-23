@@ -152,4 +152,54 @@ public class WalletController {
         walletService.addMoney(userId, amount, description);
         return ResponseEntity.ok().build();
     }
+
+    // ====== Escrow Internal Endpoints (gọi từ order-service) ======
+
+    /**
+     * API Nội bộ: Tạm giữ tiền buyer → escrow
+     * POST /api/wallet/internal/escrow-hold
+     */
+    @PostMapping("/internal/escrow-hold")
+    public ResponseEntity<Void> escrowHold(@RequestBody java.util.Map<String, Object> request) {
+        String userId = (String) request.get("userId");
+        Object amountObj = request.get("amount");
+        double amount = amountObj instanceof Number
+                ? ((Number) amountObj).doubleValue()
+                : Double.parseDouble(amountObj.toString());
+        String orderId = (String) request.get("orderId");
+        walletService.escrowHold(userId, amount, orderId);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * API Nội bộ: Release tiền escrow → ví seller
+     * POST /api/wallet/internal/escrow-release
+     */
+    @PostMapping("/internal/escrow-release")
+    public ResponseEntity<Void> escrowRelease(@RequestBody java.util.Map<String, Object> request) {
+        String userId = (String) request.get("userId");
+        Object amountObj = request.get("amount");
+        double amount = amountObj instanceof Number
+                ? ((Number) amountObj).doubleValue()
+                : Double.parseDouble(amountObj.toString());
+        String orderId = (String) request.get("orderId");
+        walletService.escrowRelease(userId, amount, orderId);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * API Nội bộ: Hoàn tiền escrow → ví buyer
+     * POST /api/wallet/internal/escrow-refund
+     */
+    @PostMapping("/internal/escrow-refund")
+    public ResponseEntity<Void> escrowRefund(@RequestBody java.util.Map<String, Object> request) {
+        String userId = (String) request.get("userId");
+        Object amountObj = request.get("amount");
+        double amount = amountObj instanceof Number
+                ? ((Number) amountObj).doubleValue()
+                : Double.parseDouble(amountObj.toString());
+        String orderId = (String) request.get("orderId");
+        walletService.escrowRefund(userId, amount, orderId);
+        return ResponseEntity.ok().build();
+    }
 }

@@ -21,6 +21,8 @@ public class OrderController {
 
     private final OrderService orderService;
 
+    // ==================== BUYER ENDPOINTS ====================
+
     @PostMapping
     public ResponseEntity<Order> createOrder(
             @AuthenticationPrincipal JwtAuthenticatedUser user,
@@ -35,6 +37,13 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getOrdersByBuyerId(user.userId()));
     }
 
+    @GetMapping("/{orderId}")
+    public ResponseEntity<Order> getOrder(
+            @AuthenticationPrincipal JwtAuthenticatedUser user,
+            @PathVariable String orderId) {
+        return ResponseEntity.ok(orderService.getOrderById(orderId, user.userId()));
+    }
+
     @PutMapping("/{orderId}/cancel")
     public ResponseEntity<Order> cancelOrder(
             @AuthenticationPrincipal JwtAuthenticatedUser user,
@@ -42,18 +51,50 @@ public class OrderController {
         return ResponseEntity.ok(orderService.cancelOrder(orderId, user.userId()));
     }
 
-    @PutMapping("/{orderId}/return")
-    public ResponseEntity<Order> returnOrder(
+    @PutMapping("/{orderId}/received")
+    public ResponseEntity<Order> confirmReceived(
             @AuthenticationPrincipal JwtAuthenticatedUser user,
             @PathVariable String orderId) {
-        return ResponseEntity.ok(orderService.returnOrder(orderId, user.userId()));
+        return ResponseEntity.ok(orderService.confirmReceived(orderId, user.userId()));
     }
 
-    @GetMapping("/{orderId}")
-    public ResponseEntity<Order> getOrder(
+    @PutMapping("/{orderId}/dispute")
+    public ResponseEntity<Order> disputeOrder(
+            @AuthenticationPrincipal JwtAuthenticatedUser user,
+            @PathVariable String orderId,
+            @RequestBody Map<String, String> body) {
+        String reason = body.get("reason");
+        return ResponseEntity.ok(orderService.disputeOrder(orderId, user.userId(), reason));
+    }
+
+    // ==================== SELLER ENDPOINTS ====================
+
+    @GetMapping("/seller")
+    public ResponseEntity<List<Order>> getSellerOrders(
+            @AuthenticationPrincipal JwtAuthenticatedUser user) {
+        return ResponseEntity.ok(orderService.getOrdersBySellerId(user.userId()));
+    }
+
+    @PutMapping("/seller/{orderId}/preparing")
+    public ResponseEntity<Order> confirmPreparing(
             @AuthenticationPrincipal JwtAuthenticatedUser user,
             @PathVariable String orderId) {
-        return ResponseEntity.ok(orderService.getOrderById(orderId, user.userId()));
+        return ResponseEntity.ok(orderService.confirmPreparing(orderId, user.userId()));
+    }
+
+    @PutMapping("/seller/{orderId}/handover")
+    public ResponseEntity<Order> handoverToShipper(
+            @AuthenticationPrincipal JwtAuthenticatedUser user,
+            @PathVariable String orderId,
+            @RequestBody Shipment shipmentData) {
+        return ResponseEntity.ok(orderService.handoverToShipper(orderId, user.userId(), shipmentData));
+    }
+
+    @PutMapping("/seller/{orderId}/cancel")
+    public ResponseEntity<Order> cancelOrderBySeller(
+            @AuthenticationPrincipal JwtAuthenticatedUser user,
+            @PathVariable String orderId) {
+        return ResponseEntity.ok(orderService.cancelOrderBySeller(orderId, user.userId()));
     }
 
     // ==================== ADMIN ENDPOINTS ====================
@@ -76,63 +117,22 @@ public class OrderController {
         return ResponseEntity.ok(orderService.updateOrderStatus(orderId, status));
     }
 
-    @PostMapping("/admin/{orderId}/shipment")
-    public ResponseEntity<Order> createShipment(
-            @PathVariable String orderId,
-            @RequestBody Shipment shipment) {
-        return ResponseEntity.ok(orderService.createShipment(orderId, shipment));
+    @GetMapping("/admin/disputes")
+    public ResponseEntity<List<Order>> getDisputedOrders() {
+        return ResponseEntity.ok(orderService.getDisputedOrders());
     }
 
-    @PutMapping("/admin/{orderId}/shipment")
-    public ResponseEntity<Order> updateShipment(
+    @PutMapping("/admin/{orderId}/resolve-dispute")
+    public ResponseEntity<Order> resolveDispute(
             @PathVariable String orderId,
-            @RequestBody Shipment shipment) {
-        return ResponseEntity.ok(orderService.updateShipment(orderId, shipment));
+            @RequestBody Map<String, String> body) {
+        String action = body.get("action"); // "refund" or "release"
+        return ResponseEntity.ok(orderService.resolveDispute(orderId, action));
     }
 
     @GetMapping("/admin/statistics")
     public ResponseEntity<Map<String, Object>> getAdminStatistics(
             @RequestParam(defaultValue = "month") String timeframe) {
         return ResponseEntity.ok(orderService.getAdminStatistics(timeframe));
-    }
-
-    // ==================== SELLER ENDPOINTS ====================
-
-    @GetMapping("/seller")
-    public ResponseEntity<List<Order>> getSellerOrders(
-            @AuthenticationPrincipal JwtAuthenticatedUser user) {
-        return ResponseEntity.ok(orderService.getOrdersBySellerId(user.userId()));
-    }
-
-    @PutMapping("/seller/{orderId}/cancel")
-    public ResponseEntity<Order> cancelOrderBySeller(
-            @AuthenticationPrincipal JwtAuthenticatedUser user,
-            @PathVariable String orderId) {
-        return ResponseEntity.ok(orderService.cancelOrderBySeller(orderId, user.userId()));
-    }
-
-    @PutMapping("/seller/{orderId}/status")
-    public ResponseEntity<Order> updateOrderStatusBySeller(
-            @AuthenticationPrincipal JwtAuthenticatedUser user,
-            @PathVariable String orderId,
-            @RequestBody Map<String, String> body) {
-        String status = body.get("status");
-        return ResponseEntity.ok(orderService.updateOrderStatusBySeller(orderId, user.userId(), status));
-    }
-
-    @PostMapping("/seller/{orderId}/shipment")
-    public ResponseEntity<Order> createShipmentBySeller(
-            @AuthenticationPrincipal JwtAuthenticatedUser user,
-            @PathVariable String orderId,
-            @RequestBody Shipment shipment) {
-        return ResponseEntity.ok(orderService.createShipmentBySeller(orderId, user.userId(), shipment));
-    }
-
-    @PutMapping("/seller/{orderId}/shipment")
-    public ResponseEntity<Order> updateShipmentBySeller(
-            @AuthenticationPrincipal JwtAuthenticatedUser user,
-            @PathVariable String orderId,
-            @RequestBody Shipment shipment) {
-        return ResponseEntity.ok(orderService.updateShipmentBySeller(orderId, user.userId(), shipment));
     }
 }

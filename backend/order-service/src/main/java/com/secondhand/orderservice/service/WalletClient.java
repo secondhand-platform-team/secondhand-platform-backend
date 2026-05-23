@@ -60,9 +60,75 @@ public class WalletClient {
             log.info("Wallet added successfully via core-service");
         } catch (Exception e) {
             log.error("Failed to add money to wallet via core-service: {}", e.getMessage(), e);
-            // Don't let seller refund fail the whole order flow if it's secondary, 
-            // but for safety we rethrow or just log.
             throw new RuntimeException("Không thể cộng tiền vào ví của người bán: " + e.getMessage());
+        }
+    }
+
+    // ====== Escrow Methods ======
+
+    public void escrowHold(String userId, double amount, String orderId) {
+        try {
+            String url = coreServiceUrl + "/api/wallet/internal/escrow-hold";
+            log.info("Escrow HOLD: userId={}, amount={}, orderId={}", userId, amount, orderId);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> request = new HashMap<>();
+            request.put("userId", userId);
+            request.put("amount", amount);
+            request.put("orderId", orderId);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            restTemplate.postForEntity(url, entity, Void.class);
+            log.info("Escrow HOLD successful");
+        } catch (Exception e) {
+            log.error("Escrow HOLD failed: {}", e.getMessage(), e);
+            throw new RuntimeException("Không thể tạm giữ tiền: Số dư ví không đủ hoặc xảy ra lỗi.");
+        }
+    }
+
+    public void escrowRelease(String userId, double amount, String orderId) {
+        try {
+            String url = coreServiceUrl + "/api/wallet/internal/escrow-release";
+            log.info("Escrow RELEASE: userId={}, amount={}, orderId={}", userId, amount, orderId);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> request = new HashMap<>();
+            request.put("userId", userId);
+            request.put("amount", amount);
+            request.put("orderId", orderId);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            restTemplate.postForEntity(url, entity, Void.class);
+            log.info("Escrow RELEASE successful");
+        } catch (Exception e) {
+            log.error("Escrow RELEASE failed: {}", e.getMessage(), e);
+            throw new RuntimeException("Không thể chuyển tiền cho người bán: " + e.getMessage());
+        }
+    }
+
+    public void escrowRefund(String userId, double amount, String orderId) {
+        try {
+            String url = coreServiceUrl + "/api/wallet/internal/escrow-refund";
+            log.info("Escrow REFUND: userId={}, amount={}, orderId={}", userId, amount, orderId);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> request = new HashMap<>();
+            request.put("userId", userId);
+            request.put("amount", amount);
+            request.put("orderId", orderId);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            restTemplate.postForEntity(url, entity, Void.class);
+            log.info("Escrow REFUND successful");
+        } catch (Exception e) {
+            log.error("Escrow REFUND failed: {}", e.getMessage(), e);
+            throw new RuntimeException("Không thể hoàn tiền: " + e.getMessage());
         }
     }
 }
