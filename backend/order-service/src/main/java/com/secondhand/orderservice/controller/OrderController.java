@@ -135,4 +135,20 @@ public class OrderController {
             @RequestParam(defaultValue = "month") String timeframe) {
         return ResponseEntity.ok(orderService.getAdminStatistics(timeframe));
     }
+
+    // ==================== EVENT SOURCING ENDPOINTS ====================
+
+    /**
+     * Event Sourcing — Lấy timeline events của 1 order.
+     * Trả về danh sách events theo thứ tự thời gian.
+     * 
+     * Dùng cho:
+     * - UI hiển thị lịch sử đơn hàng chi tiết
+     * - Debug production issues
+     * - Audit trail
+     */
+    @GetMapping("/{orderId}/events")
+    public ResponseEntity<?> getOrderEvents(@PathVariable String orderId) {
+        return ResponseEntity.ok(orderService.getOrderEvents(orderId));
+    }
 }

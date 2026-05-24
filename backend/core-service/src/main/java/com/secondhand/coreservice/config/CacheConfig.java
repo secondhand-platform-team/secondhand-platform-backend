@@ -33,8 +33,19 @@ public class CacheConfig {
             .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
             .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer));
 
+        // Per-cache TTL — mỗi cache name có TTL riêng phù hợp với tần suất thay đổi
+        java.util.Map<String, RedisCacheConfiguration> cacheConfigurations = new java.util.HashMap<>();
+        cacheConfigurations.put("itemDetail", defaults.entryTtl(Duration.ofMinutes(5)));
+        cacheConfigurations.put("itemsFeatured", defaults.entryTtl(Duration.ofMinutes(10)));
+        cacheConfigurations.put("categoriesAll", defaults.entryTtl(Duration.ofMinutes(30)));
+        cacheConfigurations.put("categoriesTopLevel", defaults.entryTtl(Duration.ofMinutes(30)));
+        cacheConfigurations.put("categoriesChildren", defaults.entryTtl(Duration.ofMinutes(30)));
+        cacheConfigurations.put("categoriesChildrenBySlug", defaults.entryTtl(Duration.ofMinutes(30)));
+        cacheConfigurations.put("categoryAttributes", defaults.entryTtl(Duration.ofMinutes(30)));
+
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaults)
+                .withInitialCacheConfigurations(cacheConfigurations)
                 .build();
     }
 }

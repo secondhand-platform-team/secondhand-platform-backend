@@ -205,6 +205,22 @@ public class ItemController {
     }
 
     /**
+     * API Nội bộ: Reserve item (atomic, dùng SELECT FOR UPDATE)
+     * PUT /api/items/internal/{itemId}/reserve
+     * 
+     * Giải quyết Race Condition: 2 buyer mua cùng lúc → chỉ 1 thành công.
+     * PostgreSQL row lock đảm bảo chỉ 1 transaction đọc item tại 1 thời điểm.
+     */
+    @PutMapping("/internal/{itemId}/reserve")
+    public ResponseEntity<ItemResponse> reserveItemInternal(
+            @PathVariable String itemId,
+            @RequestBody java.util.Map<String, String> body) {
+        String buyerId = body.get("buyerId");
+        ItemResponse response = itemService.reserveItem(itemId, buyerId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * API Nội bộ: Lấy thông tin item (không cần auth)
      * GET /api/items/internal/{itemId}
      */

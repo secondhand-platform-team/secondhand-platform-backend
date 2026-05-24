@@ -66,4 +66,7 @@ public interface ItemService {
 
     /** Internal: cập nhật status item từ order-service (không cần auth) */
     ItemResponse updateItemStatusInternal(String itemId, String status);
+
+    /** Internal: reserve item (atomic, SELECT FOR UPDATE) — Race Condition prevention */
+    ItemResponse reserveItem(String itemId, String buyerId);
 }

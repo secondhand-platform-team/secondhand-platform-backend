@@ -16,6 +16,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
@@ -36,7 +37,14 @@ import lombok.ToString;
 @Setter
 @ToString
 @Entity
-@Table(name = "items")
+@Table(name = "items", indexes = {
+    @Index(name = "idx_items_status", columnList = "status"),
+    @Index(name = "idx_items_user_id", columnList = "userId"),
+    @Index(name = "idx_items_category_id", columnList = "category_id"),
+    @Index(name = "idx_items_created_at", columnList = "createdAt"),
+    @Index(name = "idx_items_price", columnList = "price"),
+    @Index(name = "idx_items_status_deleted", columnList = "status, deletedAt")
+})
 @Builder
 public class Item {
 
@@ -73,6 +81,12 @@ public class Item {
     private LocalDateTime deletedAt;
 
     private String userId;
+
+    // Reservation tracking — Race Condition Prevention
+    // Khi buyer đặt mua, item sẽ được reserve (SELECT FOR UPDATE)
+    // Nếu VNPay payment, reservedUntil = now + 10 phút → auto release nếu timeout
+    private String reservedBy;
+    private LocalDateTime reservedUntil;
 
     // Transaction ID for payment tracking
     private String transactionId;

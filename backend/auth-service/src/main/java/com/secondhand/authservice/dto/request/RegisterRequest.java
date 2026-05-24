@@ -33,4 +33,6 @@ public class RegisterRequest {
 
     @NotBlank(message = "Confirm password is required")
     private String confirmPassword;
+
+    private String role; // Optional: Used when registering ADMIN or STAFF
 }

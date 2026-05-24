@@ -240,8 +240,14 @@ public class AuthController {
     @PostMapping("/register/admin")
     public ResponseEntity<MessageResponse> registerAdmin(
             @Valid @RequestBody RegisterRequest request,
-            @RequestParam String role) {
-        Role roleEnum = Role.valueOf(role.toUpperCase());
+            @RequestParam(required = false) String role) {
+        
+        String finalRole = role != null ? role : request.getRole();
+        if (finalRole == null || finalRole.isBlank()) {
+            throw new BadRequestException("Role is required either as a query parameter or in the request body");
+        }
+        
+        Role roleEnum = Role.valueOf(finalRole.toUpperCase());
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.registerStaffOrAdmin(request, roleEnum));
     }
 

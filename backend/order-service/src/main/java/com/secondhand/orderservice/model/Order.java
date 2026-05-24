@@ -15,7 +15,12 @@ import java.util.List;
 @Setter
 @ToString(exclude = {"orderItems", "payment", "shipment"})
 @Entity
-@Table(name = "orders")
+@Table(name = "orders", indexes = {
+    @Index(name = "idx_orders_buyer_id", columnList = "buyerId"),
+    @Index(name = "idx_orders_seller_id", columnList = "sellerId"),
+    @Index(name = "idx_orders_status", columnList = "status"),
+    @Index(name = "idx_orders_created_at", columnList = "createdAt")
+})
 public class Order {
 
     @Id

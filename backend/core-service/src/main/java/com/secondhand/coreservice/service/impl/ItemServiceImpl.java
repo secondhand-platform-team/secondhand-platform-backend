@@ -1077,4 +1077,33 @@ public class ItemServiceImpl implements ItemService {
         log.info("Item {} status updated internally to: {}", itemId, status);
         return mapToItemResponse(updatedItem);
     }
+
+    // ====================================================================
+    // Internal: Reserve item (atomic, SELECT FOR UPDATE)
+    // Race Condition Prevention — chỉ 1 buyer có thể reserve item tại 1 thời điểm
+    // ====================================================================
+
+    @Override
+    @Transactional
+    @CacheEvict(cacheNames = {"itemsAll", "itemsByCategory", "itemsByCategorySlug", "itemsFeatured"}, allEntries = true)
+    public ItemResponse reserveItem(String itemId, String buyerId) {
+        // SELECT FOR UPDATE — lock row, buyer thứ 2 phải chờ
+        Item item = itemRepository.findByItemIdForUpdate(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Item not found with id: " + itemId));
+
+        // Check: chỉ ACTIVE mới được reserve
+        if (item.getStatus() != ItemStatus.ACTIVE) {
+            throw new BadRequestException("Sản phẩm không còn khả dụng (trạng thái: " + item.getStatus() + ")");
+        }
+
+        // Reserve item
+        item.setStatus(ItemStatus.RESERVED);
+        item.setReservedBy(buyerId);
+        item.setReservedUntil(LocalDateTime.now().plusMinutes(10)); // auto-release sau 10 phút nếu VNPay timeout
+        item.setUpdatedAt(LocalDateTime.now());
+
+        Item saved = itemRepository.save(item);
+        log.info("Item {} reserved by buyer {} (expires at {})", itemId, buyerId, item.getReservedUntil());
+        return mapToItemResponse(saved);
+    }
 }

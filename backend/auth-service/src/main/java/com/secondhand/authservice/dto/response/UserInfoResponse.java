@@ -3,6 +3,8 @@ package com.secondhand.authservice.dto.response;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.time.LocalDate;
+
 @Getter
 @AllArgsConstructor
 public class UserInfoResponse {
@@ -12,4 +14,5 @@ public class UserInfoResponse {
     private String role;
     private boolean status;
     private int freeSellUse;
+    private LocalDate createdAt;
 }

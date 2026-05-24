@@ -1,44 +1,59 @@
 package com.secondhand.orderservice.service;
 
+import com.secondhand.orderservice.config.RabbitMQConfig;
+import com.secondhand.orderservice.dto.event.NotificationEvent;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.time.LocalDateTime;
 
+/**
+ * Notification Client — Event-driven via RabbitMQ
+ * 
+ * TRƯỚC: Gọi REST sync → Core Service → tạo notification
+ *   - Vấn đề: Core down → Order fail, API chậm, tight coupling
+ * 
+ * SAU: Publish event → RabbitMQ → Core Service consume async
+ *   - Order API nhanh hơn
+ *   - Không phụ thuộc Core Service availability
+ *   - RabbitMQ tự retry nếu consumer lỗi
+ *   - Scale notification consumer độc lập
+ */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class NotificationClient {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RabbitTemplate rabbitTemplate;
 
-    @Value("${app.core-service.url:http://ktpm-core-service:8082}")
-    private String coreServiceUrl;
-
+    /**
+     * Publish notification event lên RabbitMQ (async, fire-and-forget)
+     * Core Service sẽ consume event này và tạo notification + WebSocket push
+     */
     public void sendNotification(String userId, String content, String type, String itemId) {
         try {
-            String url = coreServiceUrl + "/api/notifications/internal";
-            log.info("Sending notification request to: {}, userId: {}, type: {}", url, userId, type);
+            NotificationEvent event = NotificationEvent.builder()
+                    .eventType(type)
+                    .userId(userId)
+                    .content(content)
+                    .notificationType(type)
+                    .itemId(itemId)
+                    .timestamp(LocalDateTime.now())
+                    .build();
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
+            rabbitTemplate.convertAndSend(
+                    RabbitMQConfig.NOTIFICATION_EXCHANGE,
+                    "notification." + type.toLowerCase(),
+                    event
+            );
 
-            Map<String, Object> request = new HashMap<>();
-            request.put("userId", userId);
-            request.put("content", content);
-            request.put("type", type);
-            request.put("itemId", itemId);
-
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
-            restTemplate.postForEntity(url, entity, Void.class);
-            log.info("Notification successfully sent to core-service");
+            log.info("Published notification event: type={}, userId={}", type, userId);
         } catch (Exception e) {
-            log.error("Failed to send notification to core-service: {}", e.getMessage(), e);
+            // Log lỗi nhưng KHÔNG throw → order không bị fail vì notification
+            log.error("Failed to publish notification event: type={}, userId={}, error={}",
+                    type, userId, e.getMessage());
         }
     }
 }
