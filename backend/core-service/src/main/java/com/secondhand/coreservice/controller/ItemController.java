@@ -7,6 +7,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -42,6 +43,9 @@ public class ItemController {
 
     private final ItemService itemService;
     private final Validator validator;
+
+    @Value("${app.frontend.base-url}")
+    private String frontendBaseUrl;
 
     @PostMapping
     public ResponseEntity<ItemResponse> createItem(
@@ -263,14 +267,16 @@ public class ItemController {
             itemService.handleVNPayCallback(request);
 
             // Redirect to frontend success page
-            String successUrl = "http://localhost:3000/payment-success?status=success&transactionId="
+                String successUrl = frontendBaseUrl
+                    + "/payment-success?status=success&transactionId="
                     + vnp_TransactionNo;
             return ResponseEntity.status(HttpStatus.FOUND)
                     .location(URI.create(successUrl))
                     .build();
         } catch (Exception e) {
             // Redirect to frontend error page
-            String errorUrl = "http://localhost:3000/payment-failed?status=error&message=" +
+                String errorUrl = frontendBaseUrl
+                    + "/payment-failed?status=error&message=" +
                     java.net.URLEncoder.encode(e.getMessage(), java.nio.charset.StandardCharsets.UTF_8);
             return ResponseEntity.status(HttpStatus.FOUND)
                     .location(URI.create(errorUrl))
