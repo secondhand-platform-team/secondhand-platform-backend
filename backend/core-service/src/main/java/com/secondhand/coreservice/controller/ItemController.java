@@ -4,10 +4,10 @@ import java.math.BigDecimal;
 import java.net.URI;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,11 +37,14 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/items")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class ItemController {
 
     private final ItemService itemService;
     private final Validator validator;
+
+    @Value("${app.frontend.base-url:http://localhost:3000}")
+    private String frontendBaseUrl;
+
 
     @PostMapping
     public ResponseEntity<ItemResponse> createItem(
@@ -159,18 +162,10 @@ public class ItemController {
 
     @DeleteMapping("/{itemId}")
     public ResponseEntity<MessageResponse> deleteItem(@PathVariable String itemId) {
-        System.out.println("đã vô tới đây");
         MessageResponse response = itemService.deleteItem(itemId);
         return ResponseEntity.ok(response);
     }
-    @DeleteMapping("/test")
-    public void test() {
-        System.out.println("đã vô tới đây");
-    }
-    @GetMapping("/test")
-    public void test2() {
-        System.out.println("đã vô tới đây");
-    }
+
     @PostMapping("/{itemId}/favorite")
     public ResponseEntity<MessageResponse> addFavorite(@PathVariable String itemId) {
         MessageResponse response = itemService.addFavoriteItem(itemId);
@@ -222,14 +217,14 @@ public class ItemController {
             itemService.handleVNPayCallback(request);
 
             // Redirect to frontend success page
-            String successUrl = "http://localhost:3000/payment-success?status=success&transactionId="
+            String successUrl = frontendBaseUrl + "/payment-success?status=success&transactionId="
                     + vnp_TransactionNo;
             return ResponseEntity.status(HttpStatus.FOUND)
                     .location(URI.create(successUrl))
                     .build();
         } catch (Exception e) {
             // Redirect to frontend error page
-            String errorUrl = "http://localhost:3000/payment-failed?status=error&message=" +
+            String errorUrl = frontendBaseUrl + "/payment-failed?status=error&message=" +
                     java.net.URLEncoder.encode(e.getMessage(), java.nio.charset.StandardCharsets.UTF_8);
             return ResponseEntity.status(HttpStatus.FOUND)
                     .location(URI.create(errorUrl))

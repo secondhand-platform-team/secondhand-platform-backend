@@ -16,21 +16,21 @@ import java.util.*;
 @Configuration
 public class VnPayConfig {
     public static String vnp_PayUrl = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
-    public static String vnp_ReturnUrl = "http://localhost:3000/payment-callback";
-    public static String vnp_TmnCode = "Q7T511E4";
-    public static String secretKey = "8V4FDJROI38BXRSYI98AYFW8F0H4R20M";
+    public static String vnp_ReturnUrl = "";
+    public static String vnp_TmnCode = "";
+    public static String secretKey = "";
     public static String vnp_ApiUrl = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
 
     @Value("${vnpay.pay-url:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}")
     private String payUrl;
 
-    @Value("${vnpay.return-url:http://localhost:3000/payment-callback}")
+    @Value("${vnpay.return-url}")
     private String returnUrl;
 
-    @Value("${vnpay.tmn-code:Q7T511E4}")
+    @Value("${vnpay.tmn-code}")
     private String tmnCode;
 
-    @Value("${vnpay.secret-key:8V4FDJROI38BXRSYI98AYFW8F0H4R20M}")
+    @Value("${vnpay.secret-key}")
     private String secureKey;
 
     @Value("${vnpay.api-url:https://sandbox.vnpayment.vn/merchant_webapi/api/transaction}")
@@ -130,7 +130,7 @@ public class VnPayConfig {
         try {
             // Handle null request (when called from gRPC)
             if (request == null) {
-                return "127.0.0.1";
+                return "0.0.0.0";
             }
 
             ipAddress = request.getHeader("X-FORWARDED-FOR");
@@ -138,7 +138,7 @@ public class VnPayConfig {
                 ipAddress = request.getRemoteAddr();
             }
         } catch (Exception e) {
-            ipAddress = "127.0.0.1";
+            ipAddress = "0.0.0.0";
         }
         return ipAddress;
     }
