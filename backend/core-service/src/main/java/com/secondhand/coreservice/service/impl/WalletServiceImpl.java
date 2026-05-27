@@ -20,6 +20,7 @@ import com.secondhand.coreservice.model.enums.NotificationType;
 import com.secondhand.coreservice.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -42,6 +43,9 @@ public class WalletServiceImpl implements WalletService {
     // Giống ItemServiceImpl dùng PaymentEventService
     private final PaymentEventService paymentEventService;
     private final NotificationService notificationService;
+
+    @Value("${app.payment.wallet-callback-url}")
+    private String walletCallbackUrl;
 
     private String getCurrentUserId() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -84,8 +88,6 @@ public class WalletServiceImpl implements WalletService {
 
             // Giống ItemServiceImpl: gọi paymentEventService.createVnPayPayment()
             // Truyền custom returnUrl để VNPay redirect về wallet callback (qua Kong)
-            String walletCallbackUrl = "http://localhost:8000/core/api/wallet/payment-callback";
-
             PaymentCreateResult paymentResponse = paymentEventService.createVnPayPayment(
                     request.getAmount(),
                     request.getBankCode(),

@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.beans.factory.annotation.Value;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.secondhand.coreservice.client.UserServiceClient;
@@ -79,6 +80,9 @@ public class ItemServiceImpl implements ItemService {
     private final PaymentEventService paymentEventService;
     private final com.secondhand.coreservice.service.WalletService walletService;
     private final com.secondhand.coreservice.service.NotificationService notificationService;
+
+    @Value("${app.payment.item-callback-url}")
+    private String itemCallbackUrl;
 
     @Override
     @CacheEvict(cacheNames = {"itemsAll", "itemsByCategory", "itemsByCategorySlug", "itemsFeatured"}, allEntries = true)
@@ -346,7 +350,6 @@ public class ItemServiceImpl implements ItemService {
                     log.info("Creating external payment link for SELL item: {} with userId: {}, method: {}",
                             savedItem.getItemId(), userId, paymentMethod);
 
-                    String itemCallbackUrl = "http://localhost:8000/core/api/items/payment-callback";
                     PaymentCreateResult paymentResponse = paymentEventService
                             .createVnPayPayment(
                                     fee.longValue(),
