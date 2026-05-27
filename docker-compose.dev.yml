@@ -148,6 +148,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://ktpm-postgres:5432/secondhand_auth_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      ORDER_SERVICE_URL: http://order-service:8083
+      CHAT_SERVICE_URL: http://chat-service:8084
       ORDER_SERVICE_GRPC_ADDRESS: static://order-service:9093
       CHAT_SERVICE_GRPC_ADDRESS: static://chat-service:9094
     develop:
@@ -183,8 +185,11 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://ktpm-postgres:5432/secondhand_core_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      ORDER_SERVICE_URL: http://order-service:8083
       ORDER_SERVICE_GRPC_ADDRESS: static://order-service:9093
       CHAT_SERVICE_GRPC_ADDRESS: static://chat-service:9094
+      SPRING_REDIS_HOST: ktpm-redis
+      SPRING_REDIS_PORT: 6379
     develop:
       watch:
         - action: sync+restart
@@ -250,6 +255,12 @@ services:
       - "9094:9094"
     environment:
       SPRING_DATA_MONGODB_URI: mongodb://ktpm-mongodb:27017/secondhand_chat_db
+      SPRING_REDIS_HOST: ktpm-redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_RABBITMQ_HOST: ktpm-rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: admin
+      SPRING_RABBITMQ_PASSWORD: admin123
     develop:
       watch:
         - action: sync+restart

@@ -1,14 +1,14 @@
 package com.secondhand.orderservice.service.impl;
 
 import com.secondhand.orderservice.model.Cart;
+import com.secondhand.orderservice.model.CartItem;
 import com.secondhand.orderservice.repository.CartRepository;
 import com.secondhand.orderservice.service.CartService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.secondhand.orderservice.dto.request.CartItemRequest;
-import com.secondhand.orderservice.model.CartItem;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Optional;
 import java.util.UUID;
@@ -55,43 +55,26 @@ public class CartServiceImpl implements CartService {
 
     @Override
     @Transactional
-    public Cart addItemToCart(String userId, CartItemRequest request) {
+    public Cart addItemToCart(String userId, String itemId) {
         Cart cart = createOrGetCart(userId);
-        
+
+        // Kiểm tra item đã tồn tại trong cart chưa (secondhand: mỗi item là duy nhất)
         Optional<CartItem> existingItem = cart.getCartItems().stream()
-                .filter(item -> item.getItemId().equals(request.getItemId()))
+                .filter(item -> item.getItemId().equals(itemId))
                 .findFirst();
 
         if (existingItem.isPresent()) {
-            CartItem item = existingItem.get();
-            item.setQuantity(item.getQuantity() + request.getQuantity());
-        } else {
-            CartItem newItem = new CartItem();
-            newItem.setId(UUID.randomUUID().toString());
-            newItem.setItemId(request.getItemId());
-            newItem.setPrice(request.getPrice());
-            newItem.setQuantity(request.getQuantity());
-            newItem.setCart(cart);
-            cart.getCartItems().add(newItem);
+            // Item đã có trong cart → không thêm nữa
+            return cart;
         }
 
-        return cartRepository.save(cart);
-    }
+        CartItem newItem = new CartItem();
+        newItem.setId(UUID.randomUUID().toString());
+        newItem.setItemId(itemId);
+        newItem.setCart(cart);
+        newItem.setCreatedAt(LocalDateTime.now());
+        cart.getCartItems().add(newItem);
 
-    @Override
-    @Transactional
-    public Cart updateItemQuantity(String userId, String itemId, Integer quantity) {
-        Cart cart = createOrGetCart(userId);
-        cart.getCartItems().stream()
-                .filter(item -> item.getItemId().equals(itemId))
-                .findFirst()
-                .ifPresent(item -> {
-                    if (quantity <= 0) {
-                        cart.getCartItems().remove(item);
-                    } else {
-                        item.setQuantity(quantity);
-                    }
-                });
         return cartRepository.save(cart);
     }
 

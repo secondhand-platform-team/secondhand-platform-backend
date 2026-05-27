@@ -18,10 +18,10 @@ public class PaymentEventServiceImpl implements PaymentEventService {
     private final PaymentRestClient paymentRestClient;
 
     @Override
-    public PaymentCreateResult createVnPayPayment(Long amount, String bankCode, String language, String userId) {
+    public PaymentCreateResult createVnPayPayment(Long amount, String bankCode, String language, String userId, String walletCallbackUrl) {
         log.info("Creating VN Pay payment - Amount: {}, BankCode: {}, Language: {}, UserId: {}",
                 amount, bankCode, language, userId);
-        return paymentRestClient.createVnPayPayment(amount, bankCode, language, userId);
+        return paymentRestClient.createVnPayPayment(amount, bankCode, language, userId,walletCallbackUrl);
     }
 
     @Override

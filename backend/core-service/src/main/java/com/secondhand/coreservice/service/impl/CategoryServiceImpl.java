@@ -16,6 +16,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 
 import com.secondhand.coreservice.dto.request.CategoryRequest;
 import com.secondhand.coreservice.dto.response.CategoryAttributeResponse;
@@ -46,6 +48,7 @@ public class CategoryServiceImpl implements CategoryService {
     private final ItemRepository itemRepository;
 
     @Override
+    @CacheEvict(cacheNames = {"categoriesAll", "categoriesTopLevel", "categoriesChildren", "categoriesChildrenBySlug"}, allEntries = true)
     public CategoryResponse createCategory(CategoryRequest request) {
         if (categoryRepository.existsByName(request.getName())) {
             throw new BadRequestException("Category with name '" + request.getName() + "' already exists");
@@ -86,6 +89,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "categoriesAll")
     public List<CategoryResponse> getAllCategories() {
         List<Category> categories = categoryRepository.findAll();
         return categories.stream()
@@ -95,6 +99,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "categoriesTopLevel")
     public List<CategoryResponse> getTopLevelCategories() {
         return categoryRepository.findByParentIsNull().stream()
                 .map(this::mapToCategoryResponse)
@@ -102,6 +107,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @CacheEvict(cacheNames = {"categoriesAll", "categoriesTopLevel", "categoriesChildren", "categoriesChildrenBySlug"}, allEntries = true)
     public CategoryResponse updateCategory(String categoryId, CategoryRequest request) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryId));
@@ -147,6 +153,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @CacheEvict(cacheNames = {"categoriesAll", "categoriesTopLevel", "categoriesChildren", "categoriesChildrenBySlug"}, allEntries = true)
     public MessageResponse deleteCategory(String categoryId) {
         if (!categoryRepository.existsById(categoryId)) {
             throw new ResourceNotFoundException("Category not found with id: " + categoryId);
@@ -157,6 +164,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "categoriesChildren", key = "#parentCategoryId")
     public List<CategoryResponse> getCategoryChildren(String parentCategoryId) {
         categoryRepository.findById(parentCategoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + parentCategoryId));
@@ -168,6 +176,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "categoriesChildrenBySlug", key = "#parentSlug")
     public List<CategoryResponse> getCategoryChildrenBySlug(String parentSlug) {
         Category parentCategory = categoryRepository.findBySlug(parentSlug)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with slug: " + parentSlug));
@@ -179,6 +188,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "categoryAttributes", key = "#categoryId")
     public List<CategoryAttributeResponse> getCategoryAttributes(String categoryId) {
         // Kiểm tra category có tồn tại
         if (!categoryRepository.existsById(categoryId)) {
@@ -338,6 +348,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @CacheEvict(cacheNames = "categoryAttributes", key = "#categoryId")
     public CategoryAttributeResponse createCategoryAttribute(String categoryId, com.secondhand.coreservice.dto.request.CategoryAttributeRequest request) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + categoryId));
@@ -376,6 +387,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @CacheEvict(cacheNames = "categoryAttributes", key = "#categoryId")
     public CategoryAttributeResponse updateCategoryAttribute(String categoryId, String attributeId, com.secondhand.coreservice.dto.request.CategoryAttributeRequest request) {
         if (!categoryRepository.existsById(categoryId)) {
             throw new ResourceNotFoundException("Category not found with id: " + categoryId);
@@ -421,6 +433,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @CacheEvict(cacheNames = "categoryAttributes", key = "#categoryId")
     public MessageResponse deleteCategoryAttribute(String categoryId, String attributeId) {
         if (!categoryRepository.existsById(categoryId)) {
             throw new ResourceNotFoundException("Category not found with id: " + categoryId);

@@ -6,6 +6,7 @@ import logging
 import re
 from typing import Optional
 
+# pyrefly: ignore [missing-import]
 from openai import AsyncOpenAI
 
 from app.config import get_settings

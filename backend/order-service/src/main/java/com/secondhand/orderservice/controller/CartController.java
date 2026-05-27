@@ -25,15 +25,7 @@ public class CartController {
     public ResponseEntity<Cart> addItemToCart(
             @AuthenticationPrincipal JwtAuthenticatedUser user,
             @RequestBody CartItemRequest request) {
-        return ResponseEntity.ok(cartService.addItemToCart(user.userId(), request));
-    }
-
-    @PutMapping("/me/items/{itemId}")
-    public ResponseEntity<Cart> updateItemQuantity(
-            @AuthenticationPrincipal JwtAuthenticatedUser user,
-            @PathVariable String itemId,
-            @RequestParam Integer quantity) {
-        return ResponseEntity.ok(cartService.updateItemQuantity(user.userId(), itemId, quantity));
+        return ResponseEntity.ok(cartService.addItemToCart(user.userId(), request.getItemId()));
     }
 
     @DeleteMapping("/me/items/{itemId}")

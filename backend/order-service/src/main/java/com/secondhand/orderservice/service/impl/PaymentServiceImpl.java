@@ -2,6 +2,8 @@ package com.secondhand.orderservice.service.impl;
 
 import com.secondhand.orderservice.config.VnPayConfig;
 import com.secondhand.orderservice.dto.request.CreatePaymentRequest;
+//import com.secondhand.orderservice.dto.request.PaymentFilterRequest;
+import com.secondhand.orderservice.dto.response.AdminPaymentResponse;
 import com.secondhand.orderservice.dto.response.PaymentResponse;
 import com.secondhand.orderservice.model.Payment;
 import com.secondhand.orderservice.model.enums.PaymentMethod;
@@ -12,7 +14,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import jakarta.persistence.criteria.Predicate;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -139,7 +145,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public PaymentResponse createVnPayPaymentInternal(Long amount, String bankCode, String language, String userId) {
+    public PaymentResponse createVnPayPaymentInternal(Long amount, String bankCode, String language, String userId, String customReturnUrl) {
         CreatePaymentRequest request = new CreatePaymentRequest();
         request.setAmount(amount);
         request.setBankCode(bankCode);
@@ -169,7 +175,8 @@ public class PaymentServiceImpl implements PaymentService {
             vnp_Params.put("vnp_OrderInfo", "Thanh toan don hang");
             vnp_Params.put("vnp_OrderType", orderType);
             vnp_Params.put("vnp_Locale", language != null && !language.isEmpty() ? language : "vn");
-            vnp_Params.put("vnp_ReturnUrl", returnUrl != null ? returnUrl.trim() : VnPayConfig.vnp_ReturnUrl);
+            String finalReturnUrl = customReturnUrl != null && !customReturnUrl.isEmpty() ? customReturnUrl : (this.returnUrl != null ? this.returnUrl.trim() : VnPayConfig.vnp_ReturnUrl);
+            vnp_Params.put("vnp_ReturnUrl", finalReturnUrl);
             vnp_Params.put("vnp_IpAddr", ipAddr);
 
             TimeZone vnTimeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh");
@@ -239,6 +246,10 @@ public class PaymentServiceImpl implements PaymentService {
     public Boolean verifyVnPayCallback(HttpServletRequest request) {
         try {
             String vnp_SecureHash = request.getParameter("vnp_SecureHash");
+            if (vnp_SecureHash == null || vnp_SecureHash.isEmpty()) {
+                log.warn("verifyVnPayCallback - vnp_SecureHash is missing!");
+                return false;
+            }
 
             Map<String, String> fields = new HashMap<>();
             Enumeration<String> params = request.getParameterNames();
@@ -247,15 +258,39 @@ public class PaymentServiceImpl implements PaymentService {
                 String fieldName = params.nextElement();
                 String fieldValue = request.getParameter(fieldName);
 
-                if ((fieldValue != null) && (fieldValue.length() > 0) && !fieldName.equals("vnp_SecureHash")) {
+                if ((fieldValue != null) && (fieldValue.length() > 0) 
+                        && !fieldName.equals("vnp_SecureHash") 
+                        && !fieldName.equals("vnp_SecureHashType")) {
                     fields.put(fieldName, fieldValue);
                 }
             }
 
-            String vnp_SecureHashCheck = VnPayConfig.hashAllFields(fields);
+            List<String> fieldNames = new ArrayList<>(fields.keySet());
+            Collections.sort(fieldNames);
+            StringBuilder sb = new StringBuilder();
+            Iterator<String> itr = fieldNames.iterator();
+            while (itr.hasNext()) {
+                String fieldName = itr.next();
+                String fieldValue = fields.get(fieldName);
+                if ((fieldValue != null) && (fieldValue.length() > 0)) {
+                    sb.append(fieldName);
+                    sb.append("=");
+                    sb.append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
+                }
+                if (itr.hasNext()) {
+                    sb.append("&");
+                }
+            }
 
-            return vnp_SecureHashCheck.equals(vnp_SecureHash);
+            String secureKeyToUse = secretKey != null ? secretKey.trim() : VnPayConfig.secretKey;
+            String vnp_SecureHashCheck = VnPayConfig.hmacSHA512(secureKeyToUse, sb.toString());
+
+            log.info("verifyVnPayCallback - String to hash: {}", sb.toString());
+            log.info("verifyVnPayCallback - Calculated Hash: {}, VNPay Hash: {}", vnp_SecureHashCheck, vnp_SecureHash);
+
+            return vnp_SecureHashCheck.equalsIgnoreCase(vnp_SecureHash);
         } catch (Exception e) {
+            log.error("verifyVnPayCallback error", e);
             return false;
         }
     }
@@ -280,4 +315,52 @@ public class PaymentServiceImpl implements PaymentService {
             log.error("Error updating payment status", e);
         }
     }
+
+    @Override
+    public Page<AdminPaymentResponse> getAllPayments(Pageable pageable, PaymentStatus status, LocalDateTime startDate, LocalDateTime endDate) {
+        Specification<Payment> spec = (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (status != null) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), status));
+            }
+
+            if (startDate != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), startDate));
+            }
+
+            if (endDate != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), endDate));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<Payment> payments = paymentRepository.findAll(spec, pageable);
+        return payments.map(this::mapToAdminPaymentResponse);
+    }
+
+
+    private AdminPaymentResponse mapToAdminPaymentResponse(Payment payment) {
+        return AdminPaymentResponse.builder()
+                .id(payment.getId())
+                .transactionId(payment.getTransactionId())
+                .amount(payment.getAmount())
+                .responseCode(payment.getResponseCode())
+                .method(payment.getMethod())
+                .status(payment.getStatus())
+                .paidAt(payment.getPaidAt())
+                .createdAt(payment.getCreatedAt())
+                .orderId(payment.getOrder() != null ? payment.getOrder().getId() : null)
+                .buyerId(payment.getOrder() != null ? payment.getOrder().getBuyerId() : null)
+                .build();
+    }
+
+    @Override
+    public AdminPaymentResponse getPaymentById(String id) {
+        Payment payment = paymentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Payment not found with id: " + id));
+        return mapToAdminPaymentResponse(payment);
+    }
 }
+

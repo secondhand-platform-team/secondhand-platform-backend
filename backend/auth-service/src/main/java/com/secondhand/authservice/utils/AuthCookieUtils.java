@@ -9,8 +9,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class AuthCookieUtils {
 
-    public static final String ACCESS_TOKEN_COOKIE_NAME = "accessToken";
-    public static final String REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
+    public static final String ACCESS_TOKEN_COOKIE_NAME_USER = "accessToken_user";
+    public static final String REFRESH_TOKEN_COOKIE_NAME_USER = "refreshToken_user";
+    public static final String ACCESS_TOKEN_COOKIE_NAME_ADMIN = "accessToken_admin";
+    public static final String REFRESH_TOKEN_COOKIE_NAME_ADMIN = "refreshToken_admin";
 
     @Value("${app.security.cookie.secure:true}")
     private boolean secureCookie;
@@ -23,8 +25,8 @@ public class AuthCookieUtils {
 
     // ── Access Token ──────────────────────────────────────────────────────────
 
-    public ResponseCookie createAccessTokenCookie(String token) {
-        return ResponseCookie.from(ACCESS_TOKEN_COOKIE_NAME, token)
+    public ResponseCookie createAccessTokenCookieForUser(String token) {
+        return ResponseCookie.from(ACCESS_TOKEN_COOKIE_NAME_USER, token)
                 .httpOnly(true)
                 .secure(secureCookie)
                 .sameSite("Strict")
@@ -33,8 +35,28 @@ public class AuthCookieUtils {
                 .build();
     }
 
-    public ResponseCookie clearAccessTokenCookie() {
-        return ResponseCookie.from(ACCESS_TOKEN_COOKIE_NAME, "")
+    public ResponseCookie createAccessTokenCookieForAdmin(String token) {
+        return ResponseCookie.from(ACCESS_TOKEN_COOKIE_NAME_ADMIN, token)
+                .httpOnly(true)
+                .secure(secureCookie)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(accessExpirationMs / 1000)
+                .build();
+    }
+
+    public ResponseCookie clearAccessTokenCookieForUser() {
+        return ResponseCookie.from(ACCESS_TOKEN_COOKIE_NAME_USER, "")
+                .httpOnly(true)
+                .secure(secureCookie)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(0)
+                .build();
+    }
+
+    public ResponseCookie clearAccessTokenCookieForAdmin() {
+        return ResponseCookie.from(ACCESS_TOKEN_COOKIE_NAME_ADMIN, "")
                 .httpOnly(true)
                 .secure(secureCookie)
                 .sameSite("Strict")
@@ -45,8 +67,8 @@ public class AuthCookieUtils {
 
     // ── Refresh Token ─────────────────────────────────────────────────────────
 
-    public ResponseCookie createRefreshTokenCookie(String token) {
-        return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, token)
+    public ResponseCookie createRefreshTokenCookieForUser(String token) {
+        return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME_USER, token)
                 .httpOnly(true)
                 .secure(secureCookie)
                 .sameSite("Strict")
@@ -55,8 +77,28 @@ public class AuthCookieUtils {
                 .build();
     }
 
-    public ResponseCookie clearRefreshTokenCookie() {
-        return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, "")
+    public ResponseCookie createRefreshTokenCookieForAdmin(String token) {
+        return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME_ADMIN, token)
+                .httpOnly(true)
+                .secure(secureCookie)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(refreshExpirationMs / 1000)
+                .build();
+    }
+
+    public ResponseCookie clearRefreshTokenCookieForUser() {
+        return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME_USER, "")
+                .httpOnly(true)
+                .secure(secureCookie)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(0)
+                .build();
+    }
+
+    public ResponseCookie clearRefreshTokenCookieForAdmin() {
+        return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME_ADMIN, "")
                 .httpOnly(true)
                 .secure(secureCookie)
                 .sameSite("Strict")
@@ -73,6 +115,19 @@ public class AuthCookieUtils {
         for (Cookie cookie : cookies) {
             if (cookieName.equals(cookie.getName())) {
                 return cookie.getValue();
+            }
+        }
+        return null;
+    }
+
+    public String extractTokenFromCookies(HttpServletRequest request, String... cookieNames) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null || cookieNames == null) return null;
+        for (String cookieName : cookieNames) {
+            for (Cookie cookie : cookies) {
+                if (cookieName.equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
             }
         }
         return null;

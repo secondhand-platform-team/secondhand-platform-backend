@@ -8,14 +8,34 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.secondhand.coreservice.model.Item;
 import com.secondhand.coreservice.model.enums.ItemStatus;
 
+import jakarta.persistence.LockModeType;
+
 @Repository
 public interface ItemRepository extends JpaRepository<Item, String> {
+
+    /**
+     * Pessimistic Lock — SELECT FOR UPDATE
+     * Dùng khi reserve item để ngăn Race Condition.
+     * 2 buyer gọi cùng lúc → 1 phải chờ transaction kia xong.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT i FROM Item i WHERE i.itemId = :itemId")
+    Optional<Item> findByItemIdForUpdate(@Param("itemId") String itemId);
+
+    /**
+     * Tìm các item reservation đã hết hạn (VNPay timeout)
+     * Scheduler sẽ chuyển chúng về ACTIVE
+     */
+    @Query("SELECT i FROM Item i WHERE i.status = 'RESERVED' AND i.reservedUntil IS NOT NULL AND i.reservedUntil < :now")
+    List<Item> findExpiredReservations(@Param("now") java.time.LocalDateTime now);
+
     @Query("SELECT i FROM Item i WHERE i.category.categoryId = :categoryId AND i.deletedAt IS NULL")
     List<Item> findByCategory_CategoryId(@Param("categoryId") String categoryId);
 

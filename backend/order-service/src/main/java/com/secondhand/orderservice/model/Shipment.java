@@ -1,6 +1,7 @@
 package com.secondhand.orderservice.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.secondhand.orderservice.model.enums.ShipmentStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -22,7 +23,13 @@ public class Shipment {
 
     private String trackingCode;  // mã vận đơn
 
-    private String status;        // SHIPPING / DELIVERED
+    @Enumerated(EnumType.STRING)
+    private ShipmentStatus status;
+
+    @Column(columnDefinition = "TEXT")
+    private String currentLocation;      // vị trí hiện tại (giả lập)
+
+    private LocalDateTime estimatedDelivery;
 
     private LocalDateTime shippedAt;
 

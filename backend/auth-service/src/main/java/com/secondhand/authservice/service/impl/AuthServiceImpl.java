@@ -245,7 +245,8 @@ public class AuthServiceImpl implements AuthService {
                 user.getEmail(),
                 user.getPhoneNumber(),
                 user.getRole().name(),
-                user.isStatus(), user.getFreeSellUsed());
+                user.isStatus(), user.getFreeSellUsed(),
+                user.getCreatedAt());
 
     }
 
@@ -260,7 +261,8 @@ public class AuthServiceImpl implements AuthService {
                 user.getPhoneNumber(),
                 user.getRole().name(),
                 user.isStatus(),
-                user.getFreeSellUsed());
+                user.getFreeSellUsed(),
+                user.getCreatedAt());
 
         UserProfile userProfile = user.getUserProfile();
         UserProfileResponse profileResponse = null;
@@ -286,7 +288,8 @@ public class AuthServiceImpl implements AuthService {
                 user.getEmail(),
                 user.getPhoneNumber(),
                 user.getRole().name(),
-                user.isStatus(), user.getFreeSellUsed());
+                user.isStatus(), user.getFreeSellUsed(),
+                user.getCreatedAt());
         UserProfile userProfile = user.getUserProfile();
         UserProfileResponse profileResponse = null;
         if (userProfile != null) {

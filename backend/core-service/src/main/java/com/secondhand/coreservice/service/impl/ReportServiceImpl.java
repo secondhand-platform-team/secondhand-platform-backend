@@ -41,6 +41,7 @@ public class ReportServiceImpl implements ReportService {
     private final ItemRepository itemRepository;
     private final CloudinaryService cloudinaryService;
     private final ObjectMapper objectMapper;
+    private final com.secondhand.coreservice.service.NotificationService notificationService;
 
     private String getCurrentUserId() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -87,6 +88,13 @@ public class ReportServiceImpl implements ReportService {
             List<ReportImage> reportImages = processAndUploadReportImages(report, images);
             report.setReportImages(reportImages);
         }
+
+        // Send notification to reporter
+        notificationService.createAndSendNotification(
+                reporterId,
+                "Bạn đã gửi báo cáo thành công cho bài đăng \"" + item.getTitle() + "\". Chúng tôi sẽ xem xét và phản hồi sớm nhất có thể.",
+                com.secondhand.coreservice.model.enums.NotificationType.SYSTEM,
+                item.getItemId());
 
         return mapToReportResponse(report);
     }

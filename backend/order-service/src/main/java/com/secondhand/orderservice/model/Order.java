@@ -15,7 +15,12 @@ import java.util.List;
 @Setter
 @ToString(exclude = {"orderItems", "payment", "shipment"})
 @Entity
-@Table(name = "orders")
+@Table(name = "orders", indexes = {
+    @Index(name = "idx_orders_buyer_id", columnList = "buyerId"),
+    @Index(name = "idx_orders_seller_id", columnList = "sellerId"),
+    @Index(name = "idx_orders_status", columnList = "status"),
+    @Index(name = "idx_orders_created_at", columnList = "createdAt")
+})
 public class Order {
 
     @Id
@@ -23,6 +28,9 @@ public class Order {
 
     // buyer
     private String buyerId;
+
+    // seller (1 order = 1 item = 1 seller trong secondhand)
+    private String sellerId;
 
     private Double totalPrice;
 
@@ -39,6 +47,20 @@ public class Order {
 
     private String shippingAddress;
 
+    // Escrow transaction tracking
+    private String escrowTransactionId;
+
+    // Auto-complete deadline (3 ngày sau khi DELIVERED)
+    private LocalDateTime autoCompleteAt;
+
+    // Lý do hủy đơn
+    @Column(columnDefinition = "TEXT")
+    private String cancelReason;
+
+    // Lý do tranh chấp
+    @Column(columnDefinition = "TEXT")
+    private String disputeReason;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
@@ -54,4 +76,7 @@ public class Order {
     // 1 Order -> 1 Shipment
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private Shipment shipment;
+
+    @Transient
+    private String paymentUrl;
 }

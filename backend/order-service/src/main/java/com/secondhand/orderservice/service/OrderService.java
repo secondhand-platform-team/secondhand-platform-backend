@@ -1,32 +1,16 @@
 package com.secondhand.orderservice.service;
 
-import com.secondhand.orderservice.dto.request.CreateOrderRequest;
-import com.secondhand.orderservice.model.Order;
-import com.secondhand.orderservice.model.Shipment;
-
-import java.util.List;
-
-public interface OrderService {
-
-    Order createOrder(String buyerId, CreateOrderRequest request);
-
-    List<Order> getOrdersByBuyerId(String buyerId);
-
-    Order getOrderById(String orderId, String buyerId);
-
-    Order cancelOrder(String orderId, String buyerId);
-
-    Order returnOrder(String orderId, String buyerId);
-
-    // Admin
-    List<Order> getAllOrders();
-
-    Order getOrderByIdAdmin(String orderId);
-
-    Order updateOrderStatus(String orderId, String status);
-
-    Order createShipment(String orderId, Shipment shipment);
-
-    Order updateShipment(String orderId, Shipment shipment);
-    java.util.Map<String, Object> getAdminStatistics(String timeframe);
+/**
+ * CQRS — Combined Service Interface (backward compatible)
+ * 
+ * Extends cả OrderCommandService (Write) và OrderQueryService (Read).
+ * Controller inject interface này, nhưng bên trong implementation
+ * được tách thành 2 class riêng biệt:
+ * - OrderCommandServiceImpl: xử lý write
+ * - OrderQueryServiceImpl: xử lý read
+ * 
+ * Đây là CQRS Pattern ở mức Application Layer.
+ */
+public interface OrderService extends OrderCommandService, OrderQueryService {
+    // Không cần khai báo thêm method — kế thừa từ 2 interface cha
 }

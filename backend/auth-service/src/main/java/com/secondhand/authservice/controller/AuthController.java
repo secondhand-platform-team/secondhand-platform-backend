@@ -72,9 +72,9 @@ public class AuthController {
 
         // Set tokens as HttpOnly cookies
         response.addHeader(HttpHeaders.SET_COOKIE,
-                authCookieUtils.createAccessTokenCookie(authResponse.getAccessToken()).toString());
+            authCookieUtils.createAccessTokenCookieForUser(authResponse.getAccessToken()).toString());
         response.addHeader(HttpHeaders.SET_COOKIE,
-                authCookieUtils.createRefreshTokenCookie(authResponse.getRefreshToken()).toString());
+            authCookieUtils.createRefreshTokenCookieForUser(authResponse.getRefreshToken()).toString());
 
         return ResponseEntity.ok(new LoginResponse(profile.getUser(), profile.getUserProfile()));
     }
@@ -95,10 +95,17 @@ public class AuthController {
         UserProfileInfoResponse profile = authService.getCurrentUserProfile(request.getEmail());
 
         // Set tokens as HttpOnly cookies — never exposed to JavaScript
-        response.addHeader(HttpHeaders.SET_COOKIE,
-                authCookieUtils.createAccessTokenCookie(authResponse.getAccessToken()).toString());
-        response.addHeader(HttpHeaders.SET_COOKIE,
-                authCookieUtils.createRefreshTokenCookie(authResponse.getRefreshToken()).toString());
+        if (role == Role.USER) {
+            response.addHeader(HttpHeaders.SET_COOKIE,
+                authCookieUtils.createAccessTokenCookieForUser(authResponse.getAccessToken()).toString());
+            response.addHeader(HttpHeaders.SET_COOKIE,
+                authCookieUtils.createRefreshTokenCookieForUser(authResponse.getRefreshToken()).toString());
+        } else {
+            response.addHeader(HttpHeaders.SET_COOKIE,
+                authCookieUtils.createAccessTokenCookieForAdmin(authResponse.getAccessToken()).toString());
+            response.addHeader(HttpHeaders.SET_COOKIE,
+                authCookieUtils.createRefreshTokenCookieForAdmin(authResponse.getRefreshToken()).toString());
+        }
 
         // Return only user info — no tokens in response body
         return ResponseEntity.ok(new LoginResponse(profile.getUser(), profile.getUserProfile()));
@@ -115,8 +122,35 @@ public class AuthController {
     public ResponseEntity<MessageResponse> refresh(
             HttpServletRequest request,
             HttpServletResponse response) {
-        String oldRefreshValue = authCookieUtils.extractTokenFromCookies(
-                request, AuthCookieUtils.REFRESH_TOKEN_COOKIE_NAME);
+        String clientType = request.getHeader("X-Client-Type");
+        if (clientType == null || clientType.isBlank()) {
+            clientType = request.getParameter("client");
+        }
+
+        String adminRefresh = authCookieUtils.extractTokenFromCookies(
+                request, AuthCookieUtils.REFRESH_TOKEN_COOKIE_NAME_ADMIN);
+        String userRefresh = authCookieUtils.extractTokenFromCookies(
+                request, AuthCookieUtils.REFRESH_TOKEN_COOKIE_NAME_USER);
+
+        String oldRefreshValue = null;
+        boolean isAdminClient = false;
+
+        if ("admin".equalsIgnoreCase(clientType)) {
+            oldRefreshValue = adminRefresh;
+            isAdminClient = true;
+        } else if ("user".equalsIgnoreCase(clientType)) {
+            oldRefreshValue = userRefresh;
+            isAdminClient = false;
+        } else if (adminRefresh != null && userRefresh != null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(MessageResponse.error("Please specify client type via X-Client-Type or ?client=admin|user"));
+        } else if (adminRefresh != null) {
+            oldRefreshValue = adminRefresh;
+            isAdminClient = true;
+        } else {
+            oldRefreshValue = userRefresh;
+            isAdminClient = false;
+        }
 
         if (oldRefreshValue == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -131,10 +165,17 @@ public class AuthController {
         UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
         String newAccessToken = jwtUtils.generateToken(userDetails, userId);
 
-        response.addHeader(HttpHeaders.SET_COOKIE,
-                authCookieUtils.createAccessTokenCookie(newAccessToken).toString());
-        response.addHeader(HttpHeaders.SET_COOKIE,
-                authCookieUtils.createRefreshTokenCookie(newRefreshToken.getToken()).toString());
+        if (isAdminClient) {
+            response.addHeader(HttpHeaders.SET_COOKIE,
+                authCookieUtils.createAccessTokenCookieForAdmin(newAccessToken).toString());
+            response.addHeader(HttpHeaders.SET_COOKIE,
+                authCookieUtils.createRefreshTokenCookieForAdmin(newRefreshToken.getToken()).toString());
+        } else {
+            response.addHeader(HttpHeaders.SET_COOKIE,
+                authCookieUtils.createAccessTokenCookieForUser(newAccessToken).toString());
+            response.addHeader(HttpHeaders.SET_COOKIE,
+                authCookieUtils.createRefreshTokenCookieForUser(newRefreshToken.getToken()).toString());
+        }
 
         return ResponseEntity.ok(MessageResponse.success("Token đã được làm mới thành công"));
     }
@@ -145,17 +186,45 @@ public class AuthController {
     public ResponseEntity<MessageResponse> logout(
             HttpServletRequest request,
             HttpServletResponse response) {
-        String refreshTokenValue = authCookieUtils.extractTokenFromCookies(
-                request, AuthCookieUtils.REFRESH_TOKEN_COOKIE_NAME);
-
-        // Invalidate refresh token in DB if present
-        if (refreshTokenValue != null) {
-            refreshTokenService.revokeByTokenValue(refreshTokenValue);
+        String clientType = request.getHeader("X-Client-Type");
+        if (clientType == null || clientType.isBlank()) {
+            clientType = request.getParameter("client");
         }
 
-        // Clear both cookies regardless
-        response.addHeader(HttpHeaders.SET_COOKIE, authCookieUtils.clearAccessTokenCookie().toString());
-        response.addHeader(HttpHeaders.SET_COOKIE, authCookieUtils.clearRefreshTokenCookie().toString());
+        String adminRefresh = authCookieUtils.extractTokenFromCookies(
+                request, AuthCookieUtils.REFRESH_TOKEN_COOKIE_NAME_ADMIN);
+        String userRefresh = authCookieUtils.extractTokenFromCookies(
+                request, AuthCookieUtils.REFRESH_TOKEN_COOKIE_NAME_USER);
+
+        if ("admin".equalsIgnoreCase(clientType)) {
+            if (adminRefresh != null) {
+                refreshTokenService.revokeByTokenValue(adminRefresh);
+            }
+            response.addHeader(HttpHeaders.SET_COOKIE, authCookieUtils.clearAccessTokenCookieForAdmin().toString());
+            response.addHeader(HttpHeaders.SET_COOKIE, authCookieUtils.clearRefreshTokenCookieForAdmin().toString());
+            return ResponseEntity.ok(MessageResponse.success("Đăng xuất thành công"));
+        }
+
+        if ("user".equalsIgnoreCase(clientType)) {
+            if (userRefresh != null) {
+                refreshTokenService.revokeByTokenValue(userRefresh);
+            }
+            response.addHeader(HttpHeaders.SET_COOKIE, authCookieUtils.clearAccessTokenCookieForUser().toString());
+            response.addHeader(HttpHeaders.SET_COOKIE, authCookieUtils.clearRefreshTokenCookieForUser().toString());
+            return ResponseEntity.ok(MessageResponse.success("Đăng xuất thành công"));
+        }
+
+        if (adminRefresh != null) {
+            refreshTokenService.revokeByTokenValue(adminRefresh);
+        }
+        if (userRefresh != null) {
+            refreshTokenService.revokeByTokenValue(userRefresh);
+        }
+
+        response.addHeader(HttpHeaders.SET_COOKIE, authCookieUtils.clearAccessTokenCookieForAdmin().toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, authCookieUtils.clearRefreshTokenCookieForAdmin().toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, authCookieUtils.clearAccessTokenCookieForUser().toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, authCookieUtils.clearRefreshTokenCookieForUser().toString());
 
         return ResponseEntity.ok(MessageResponse.success("Đăng xuất thành công"));
     }
@@ -171,8 +240,14 @@ public class AuthController {
     @PostMapping("/register/admin")
     public ResponseEntity<MessageResponse> registerAdmin(
             @Valid @RequestBody RegisterRequest request,
-            @RequestParam String role) {
-        Role roleEnum = Role.valueOf(role.toUpperCase());
+            @RequestParam(required = false) String role) {
+        
+        String finalRole = role != null ? role : request.getRole();
+        if (finalRole == null || finalRole.isBlank()) {
+            throw new BadRequestException("Role is required either as a query parameter or in the request body");
+        }
+        
+        Role roleEnum = Role.valueOf(finalRole.toUpperCase());
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.registerStaffOrAdmin(request, roleEnum));
     }
 

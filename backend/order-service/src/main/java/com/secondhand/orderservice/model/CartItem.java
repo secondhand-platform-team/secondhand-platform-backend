@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
@@ -18,12 +20,10 @@ public class CartItem {
 
     private String itemId;
 
-    private Double price;
-
-    private Integer quantity;
-
     @ManyToOne
     @JoinColumn(name = "cart_id")
     @JsonIgnore
     private Cart cart;
-}
+
+    private LocalDateTime createdAt;
+}

@@ -21,7 +21,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class JwtCookieAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String ACCESS_TOKEN_COOKIE_NAME = "accessToken";
+    private static final String ACCESS_TOKEN_COOKIE_NAME_USER = "accessToken_user";
+    private static final String ACCESS_TOKEN_COOKIE_NAME_ADMIN = "accessToken_admin";
 
     private final JwtUtils jwtUtils;
 
@@ -32,7 +33,7 @@ public class JwtCookieAuthenticationFilter extends OncePerRequestFilter {
         String token = extractAccessTokenFromHeader(request);
         System.out.println("in token"+ token);
         if (token == null) {
-            token = extractAccessTokenFromCookies(request.getCookies());
+            token = extractAccessTokenFromCookies(request);
         }
 
         if (token != null && jwtUtils.validateToken(token)) {
@@ -65,13 +66,32 @@ public class JwtCookieAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 
-    private String extractAccessTokenFromCookies(Cookie[] cookies) {
+    private String extractAccessTokenFromCookies(HttpServletRequest request) {
+        String clientType = request.getHeader("X-Client-Type");
+        if (clientType != null && !clientType.isBlank()) {
+            if ("admin".equalsIgnoreCase(clientType)) {
+                return extractCookieValue(request.getCookies(), ACCESS_TOKEN_COOKIE_NAME_ADMIN);
+            }
+            if ("user".equalsIgnoreCase(clientType)) {
+                return extractCookieValue(request.getCookies(), ACCESS_TOKEN_COOKIE_NAME_USER);
+            }
+        }
+
+        String path = request.getServletPath();
+        if (path != null && path.startsWith("/api/admin")) {
+            return extractCookieValue(request.getCookies(), ACCESS_TOKEN_COOKIE_NAME_ADMIN);
+        }
+
+        return extractCookieValue(request.getCookies(), ACCESS_TOKEN_COOKIE_NAME_USER);
+    }
+
+    private String extractCookieValue(Cookie[] cookies, String cookieName) {
         if (cookies == null) {
             return null;
         }
 
         for (Cookie cookie : cookies) {
-            if (ACCESS_TOKEN_COOKIE_NAME.equals(cookie.getName())) {
+            if (cookieName.equals(cookie.getName())) {
                 return cookie.getValue();
             }
         }

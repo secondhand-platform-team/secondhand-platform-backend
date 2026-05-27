@@ -88,7 +88,7 @@ public class ReportController {
     /**
      * Lấy danh sách báo cáo theo trạng thái (chỉ dành cho admin)
      */
-    @GetMapping("/status/{status}")
+    @GetMapping("/admin/status/{status}")
     public ResponseEntity<Page<ReportResponse>> getReportsByStatus(
             @PathVariable ReportStatus status,
             @RequestParam(defaultValue = "0") int page,
@@ -102,7 +102,7 @@ public class ReportController {
     /**
      * Lấy danh sách báo cáo được gán cho nhân viên (chỉ dành cho admin)
      */
-    @GetMapping("/staff/{staffId}")
+    @GetMapping("/admin/staff/{staffId}")
     public ResponseEntity<Page<ReportResponse>> getReportsByStaff(
             @PathVariable String staffId,
             @RequestParam(defaultValue = "0") int page,
@@ -116,7 +116,7 @@ public class ReportController {
     /**
      * Gán báo cáo cho nhân viên xử lý (chỉ dành cho admin)
      */
-    @PatchMapping("/{reportId}/assign-staff")
+    @PatchMapping("/admin/{reportId}/assign-staff")
     public ResponseEntity<ReportResponse> assignReportToStaff(
             @PathVariable String reportId,
             @RequestParam String staffId) {
@@ -128,7 +128,7 @@ public class ReportController {
     /**
      * Cập nhật trạng thái báo cáo (chỉ dành cho admin)
      */
-    @PatchMapping("/{reportId}/status")
+    @PatchMapping("/admin/{reportId}/status")
     public ResponseEntity<ReportResponse> updateReportStatus(
             @PathVariable String reportId,
             @RequestParam ReportStatus status,
@@ -141,7 +141,7 @@ public class ReportController {
     /**
      * Xóa báo cáo (chỉ dành cho admin)
      */
-    @DeleteMapping("/{reportId}")
+    @DeleteMapping("/admin/{reportId}")
     public ResponseEntity<MessageResponse> deleteReport(@PathVariable String reportId) {
         log.info("Deleting report: {}", reportId);
         reportService.deleteReport(reportId);
@@ -151,7 +151,7 @@ public class ReportController {
     /**
      * Lấy số báo cáo chưa xử lý (chỉ dành cho admin)
      */
-    @GetMapping("/stats/pending-count")
+    @GetMapping("/admin/stats/pending-count")
     public ResponseEntity<Long> getPendingReportCount() {
         log.info("Getting pending reports count");
         long count = reportService.countPendingReports();
