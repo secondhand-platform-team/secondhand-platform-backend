@@ -29,3 +29,5 @@
 
 # Logs
 *.log
+.env.prod
+.env.*.local

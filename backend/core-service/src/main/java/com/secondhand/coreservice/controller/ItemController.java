@@ -4,11 +4,10 @@ import java.math.BigDecimal;
 import java.net.URI;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,14 +37,14 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/items")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class ItemController {
 
     private final ItemService itemService;
     private final Validator validator;
 
-    @Value("${app.frontend.base-url}")
+    @Value("${app.frontend.base-url:http://localhost:3000}")
     private String frontendBaseUrl;
+
 
     @PostMapping
     public ResponseEntity<ItemResponse> createItem(
@@ -163,18 +162,10 @@ public class ItemController {
 
     @DeleteMapping("/{itemId}")
     public ResponseEntity<MessageResponse> deleteItem(@PathVariable String itemId) {
-        System.out.println("đã vô tới đây");
         MessageResponse response = itemService.deleteItem(itemId);
         return ResponseEntity.ok(response);
     }
-    @DeleteMapping("/test")
-    public void test() {
-        System.out.println("đã vô tới đây");
-    }
-    @GetMapping("/test")
-    public void test2() {
-        System.out.println("đã vô tới đây");
-    }
+
     @PostMapping("/{itemId}/favorite")
     public ResponseEntity<MessageResponse> addFavorite(@PathVariable String itemId) {
         MessageResponse response = itemService.addFavoriteItem(itemId);
@@ -191,47 +182,6 @@ public class ItemController {
     public ResponseEntity<List<ItemResponse>> getMyFavoriteItems() {
         List<ItemResponse> items = itemService.getMyFavoriteItems();
         return ResponseEntity.ok(items);
-    }
-
-    // ====== Internal Endpoint (gọi từ order-service, không cần auth) ======
-
-    /**
-     * API Nội bộ: Cập nhật status item từ order-service
-     * PUT /api/items/internal/{itemId}/status
-     */
-    @PutMapping("/internal/{itemId}/status")
-    public ResponseEntity<ItemResponse> updateItemStatusInternal(
-            @PathVariable String itemId,
-            @RequestBody java.util.Map<String, String> body) {
-        String status = body.get("status");
-        ItemResponse response = itemService.updateItemStatusInternal(itemId, status);
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * API Nội bộ: Reserve item (atomic, dùng SELECT FOR UPDATE)
-     * PUT /api/items/internal/{itemId}/reserve
-     * 
-     * Giải quyết Race Condition: 2 buyer mua cùng lúc → chỉ 1 thành công.
-     * PostgreSQL row lock đảm bảo chỉ 1 transaction đọc item tại 1 thời điểm.
-     */
-    @PutMapping("/internal/{itemId}/reserve")
-    public ResponseEntity<ItemResponse> reserveItemInternal(
-            @PathVariable String itemId,
-            @RequestBody java.util.Map<String, String> body) {
-        String buyerId = body.get("buyerId");
-        ItemResponse response = itemService.reserveItem(itemId, buyerId);
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * API Nội bộ: Lấy thông tin item (không cần auth)
-     * GET /api/items/internal/{itemId}
-     */
-    @GetMapping("/internal/{itemId}")
-    public ResponseEntity<ItemResponse> getItemInternal(@PathVariable String itemId) {
-        ItemResponse item = itemService.getItemById(itemId);
-        return ResponseEntity.ok(item);
     }
 
     @GetMapping("/payment-callback")
@@ -267,16 +217,14 @@ public class ItemController {
             itemService.handleVNPayCallback(request);
 
             // Redirect to frontend success page
-                String successUrl = frontendBaseUrl
-                    + "/payment-success?status=success&transactionId="
+            String successUrl = frontendBaseUrl + "/payment-success?status=success&transactionId="
                     + vnp_TransactionNo;
             return ResponseEntity.status(HttpStatus.FOUND)
                     .location(URI.create(successUrl))
                     .build();
         } catch (Exception e) {
             // Redirect to frontend error page
-                String errorUrl = frontendBaseUrl
-                    + "/payment-failed?status=error&message=" +
+            String errorUrl = frontendBaseUrl + "/payment-failed?status=error&message=" +
                     java.net.URLEncoder.encode(e.getMessage(), java.nio.charset.StandardCharsets.UTF_8);
             return ResponseEntity.status(HttpStatus.FOUND)
                     .location(URI.create(errorUrl))

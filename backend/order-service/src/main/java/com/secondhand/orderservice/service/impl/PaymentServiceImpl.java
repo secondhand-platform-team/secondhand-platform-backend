@@ -33,16 +33,16 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRepository paymentRepository;
 
-    @Value("${vnpay.tmn-code:Q7T511E4}")
+    @Value("${vnpay.tmn-code}")
     private String tmnCode;
 
-    @Value("${vnpay.secret-key:UXWSJQI3XEBSAXP2WDEPBZL4TYWEQSA7}")
+    @Value("${vnpay.secret-key}")
     private String secretKey;
 
     @Value("${vnpay.pay-url:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}")
     private String payUrl;
 
-    @Value("${vnpay.return-url:http://localhost:3000/payment-callback}")
+    @Value("${vnpay.return-url}")
     private String returnUrl;
 
     @Override
@@ -151,8 +151,7 @@ public class PaymentServiceImpl implements PaymentService {
         request.setBankCode(bankCode);
         request.setLanguage(language != null ? language : "vn");
         request.setUserId(userId);
-        // Internal calls use loopback IP (HttpServletRequest not available in inter-service context)
-        String ipAddr = "127.0.0.1";
+        String ipAddr = "0.0.0.0";
 
         try {
             String vnp_Version = "2.1.0";
