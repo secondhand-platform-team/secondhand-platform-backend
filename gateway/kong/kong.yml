@@ -4,8 +4,8 @@ plugins:
   - name: cors
     config:
       origins:
-        - "https://example.com"
-        - "https://admin.example.com"
+        - "https://san-docu-relife.vercel.app"
+        - "https://admin-san-docu-relife.vercel.app"
       methods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
       headers: [Accept, Authorization, Content-Type, X-Requested-With, X-Client-Type, Origin, Cookie, Set-Cookie]
       exposed_headers: [Set-Cookie]
