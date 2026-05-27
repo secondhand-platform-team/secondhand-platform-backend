@@ -26,7 +26,7 @@ services:
       # Allow file uploads up to 20MB through the gateway
       KONG_NGINX_PROXY_CLIENT_MAX_BODY_SIZE: "20m"
     volumes:
-      - ./gateway/kong/kong.yml:/var/lib/kong/kong.yml:ro
+      - ./gateway/kong/kong.local.yml:/var/lib/kong/kong.yml:ro
     depends_on:
       auth-service:
         condition: service_started
@@ -144,6 +144,8 @@ services:
       - maven-repo:/root/.m2 # cache Maven deps dùng chung
     ports:
       - "8081:8081"
+    env_file:
+      - ./.env
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://ktpm-postgres:5432/secondhand_auth_db
       SPRING_DATASOURCE_USERNAME: postgres
@@ -152,6 +154,16 @@ services:
       CHAT_SERVICE_URL: http://chat-service:8084
       ORDER_SERVICE_GRPC_ADDRESS: static://order-service:9093
       CHAT_SERVICE_GRPC_ADDRESS: static://chat-service:9094
+      APP_SECURITY_COOKIE_SECURE: "false"
+      APP_SECURITY_COOKIE_SAME_SITE: Lax
+      APP_CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173,http://localhost:5174"
+      FRONTEND_BASE_URL: "http://localhost:3000"
+      ADMIN_FRONTEND_BASE_URL: "http://localhost:3001"
+      PUBLIC_API_BASE_URL: "http://localhost:8000"
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: admin
+      SPRING_RABBITMQ_PASSWORD: admin123
     develop:
       watch:
         - action: sync+restart
@@ -181,6 +193,8 @@ services:
       - maven-repo:/root/.m2
     ports:
       - "8082:8082"
+    env_file:
+      - ./.env
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://ktpm-postgres:5432/secondhand_core_db
       SPRING_DATASOURCE_USERNAME: postgres
@@ -190,6 +204,18 @@ services:
       CHAT_SERVICE_GRPC_ADDRESS: static://chat-service:9094
       SPRING_REDIS_HOST: ktpm-redis
       SPRING_REDIS_PORT: 6379
+      AUTH_SERVICE_URL: http://auth-service:8081
+      APP_SECURITY_COOKIE_SECURE: "false"
+      APP_SECURITY_COOKIE_SAME_SITE: Lax
+      APP_CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173,http://localhost:5174"
+      FRONTEND_BASE_URL: "http://localhost:3000"
+      ADMIN_FRONTEND_BASE_URL: "http://localhost:3001"
+      PUBLIC_API_BASE_URL: "http://localhost:8000"
+      VNPAY_RETURN_URL: "http://localhost:8000/core/api/items/payment-callback"
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: admin
+      SPRING_RABBITMQ_PASSWORD: admin123
     develop:
       watch:
         - action: sync+restart
@@ -222,10 +248,13 @@ services:
     ports:
       - "8083:8083"
       - "9093:9093"
+    env_file:
+      - ./.env
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://ktpm-postgres:5432/secondhand_order_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      APP_CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173,http://localhost:5174"
     develop:
       watch:
         - action: sync+restart
@@ -253,6 +282,8 @@ services:
     ports:
       - "8084:8084"
       - "9094:9094"
+    env_file:
+      - ./.env
     environment:
       SPRING_DATA_MONGODB_URI: mongodb://ktpm-mongodb:27017/secondhand_chat_db
       SPRING_REDIS_HOST: ktpm-redis
@@ -261,6 +292,7 @@ services:
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: admin
       SPRING_RABBITMQ_PASSWORD: admin123
+      APP_CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173,http://localhost:5174"
     develop:
       watch:
         - action: sync+restart
