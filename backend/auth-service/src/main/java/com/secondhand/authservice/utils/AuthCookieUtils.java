@@ -17,6 +17,9 @@ public class AuthCookieUtils {
     @Value("${app.security.cookie.secure:true}")
     private boolean secureCookie;
 
+    @Value("${app.security.cookie.same-site:None}")
+    private String cookieSameSite;
+
     @Value("${jwt.expiration-ms}")
     private long accessExpirationMs;
 
@@ -29,7 +32,7 @@ public class AuthCookieUtils {
         return ResponseCookie.from(ACCESS_TOKEN_COOKIE_NAME_USER, token)
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Strict")
+                .sameSite(cookieSameSite)
                 .path("/")
                 .maxAge(accessExpirationMs / 1000)
                 .build();
@@ -39,7 +42,7 @@ public class AuthCookieUtils {
         return ResponseCookie.from(ACCESS_TOKEN_COOKIE_NAME_ADMIN, token)
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Strict")
+                .sameSite(cookieSameSite)
                 .path("/")
                 .maxAge(accessExpirationMs / 1000)
                 .build();
@@ -49,7 +52,7 @@ public class AuthCookieUtils {
         return ResponseCookie.from(ACCESS_TOKEN_COOKIE_NAME_USER, "")
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Strict")
+                .sameSite(cookieSameSite)
                 .path("/")
                 .maxAge(0)
                 .build();
@@ -59,7 +62,7 @@ public class AuthCookieUtils {
         return ResponseCookie.from(ACCESS_TOKEN_COOKIE_NAME_ADMIN, "")
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Strict")
+                .sameSite(cookieSameSite)
                 .path("/")
                 .maxAge(0)
                 .build();
@@ -71,7 +74,7 @@ public class AuthCookieUtils {
         return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME_USER, token)
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Strict")
+                .sameSite(cookieSameSite)
                 .path("/")
                 .maxAge(refreshExpirationMs / 1000)
                 .build();
@@ -81,7 +84,7 @@ public class AuthCookieUtils {
         return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME_ADMIN, token)
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Strict")
+                .sameSite(cookieSameSite)
                 .path("/")
                 .maxAge(refreshExpirationMs / 1000)
                 .build();
@@ -91,7 +94,7 @@ public class AuthCookieUtils {
         return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME_USER, "")
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Strict")
+                .sameSite(cookieSameSite)
                 .path("/")
                 .maxAge(0)
                 .build();
@@ -101,7 +104,7 @@ public class AuthCookieUtils {
         return ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME_ADMIN, "")
                 .httpOnly(true)
                 .secure(secureCookie)
-                .sameSite("Strict")
+                .sameSite(cookieSameSite)
                 .path("/")
                 .maxAge(0)
                 .build();
