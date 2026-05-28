@@ -2,6 +2,7 @@ package com.secondhand.coreservice.controller;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.util.Map;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -126,6 +127,12 @@ public class ItemController {
         return ResponseEntity.ok(item);
     }
 
+    @GetMapping("/internal/{itemId}")
+    public ResponseEntity<ItemResponse> getItemByIdInternal(@PathVariable String itemId) {
+        ItemResponse item = itemService.getItemById(itemId);
+        return ResponseEntity.ok(item);
+    }
+
     @GetMapping("/category/{categoryId}")
     public ResponseEntity<List<ItemResponse>> getItemsByCategory(@PathVariable String categoryId) {
         List<ItemResponse> items = itemService.getItemsByCategory(categoryId);
@@ -157,6 +164,22 @@ public class ItemController {
             @PathVariable String itemId,
             @Valid @RequestBody ItemStatusUpdateRequest request) {
         ItemResponse response = itemService.updateItemStatus(itemId, request.getStatus());
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/internal/{itemId}/status")
+    public ResponseEntity<ItemResponse> updateItemStatusInternal(
+            @PathVariable String itemId,
+            @RequestBody ItemStatusUpdateRequest request) {
+        ItemResponse response = itemService.updateItemStatusInternal(itemId, request.getStatus());
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/internal/{itemId}/reserve")
+    public ResponseEntity<ItemResponse> reserveItemInternal(
+            @PathVariable String itemId,
+            @RequestBody Map<String, String> request) {
+        ItemResponse response = itemService.reserveItem(itemId, request.get("buyerId"));
         return ResponseEntity.ok(response);
     }
 
