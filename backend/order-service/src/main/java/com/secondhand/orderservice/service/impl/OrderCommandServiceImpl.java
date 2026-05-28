@@ -79,7 +79,9 @@ public class OrderCommandServiceImpl implements OrderCommandService {
             order.setSellerId(sellerId);
             order.setTotalPrice(price);
 
-            if ("VNPAY".equalsIgnoreCase(request.getPaymentMethod())) {
+            boolean isVnPay = "VNPAY".equalsIgnoreCase(request.getPaymentMethod());
+
+            if (isVnPay) {
                 order.setStatus(OrderStatus.PENDING_PAYMENT);
                 order.setPaymentStatus(PaymentStatus.PENDING);
             } else {
@@ -107,7 +109,7 @@ public class OrderCommandServiceImpl implements OrderCommandService {
 
             Order savedOrder = orderRepository.save(order);
 
-            if ("VNPAY".equalsIgnoreCase(request.getPaymentMethod())) {
+            if (isVnPay) {
                 com.secondhand.orderservice.dto.response.PaymentResponse payRes =
                     paymentService.createVnPayPaymentInternal((long) price, null, "vn", buyerId, null);
                 savedOrder.setPaymentUrl(payRes.getPaymentUrl());
@@ -116,6 +118,9 @@ public class OrderCommandServiceImpl implements OrderCommandService {
                     payment.setOrder(savedOrder);
                     paymentRepository.save(payment);
                 });
+
+                log.info("VNPay order {} created with PENDING_PAYMENT status for buyer={}", orderId, buyerId);
+                return savedOrder;
             }
 
             try {
@@ -131,7 +136,7 @@ public class OrderCommandServiceImpl implements OrderCommandService {
             metadata.put("paymentMethod", request.getPaymentMethod());
             eventStore.recordEvent(orderId, OrderEventType.ORDER_CREATED, buyerId, "BUYER", metadata, savedOrder);
 
-            if (!"VNPAY".equalsIgnoreCase(request.getPaymentMethod())) {
+            if (!isVnPay) {
                 Map<String, Object> escrowMeta = new LinkedHashMap<>();
                 escrowMeta.put("amount", price);
                 escrowMeta.put("type", "HOLD");

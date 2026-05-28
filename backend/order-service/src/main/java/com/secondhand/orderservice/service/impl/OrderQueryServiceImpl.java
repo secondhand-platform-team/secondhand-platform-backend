@@ -2,6 +2,7 @@ package com.secondhand.orderservice.service.impl;
 
 import com.secondhand.orderservice.model.Order;
 import com.secondhand.orderservice.model.OrderEvent;
+import com.secondhand.orderservice.model.enums.OrderStatus;
 import com.secondhand.orderservice.repository.OrderRepository;
 import com.secondhand.orderservice.service.OrderEventStore;
 import com.secondhand.orderservice.service.OrderQueryService;
@@ -54,7 +55,7 @@ public class OrderQueryServiceImpl implements OrderQueryService {
     @Override
     @Transactional(readOnly = true)
     public List<Order> getOrdersBySellerId(String sellerId) {
-        return orderRepository.findBySellerIdOrderByCreatedAtDesc(sellerId);
+        return orderRepository.findBySellerIdAndStatusNotOrderByCreatedAtDesc(sellerId, OrderStatus.PENDING_PAYMENT);
     }
 
     // ====================================================================
