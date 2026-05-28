@@ -54,6 +54,9 @@ jobs:
           java-version: '21'
           cache: maven
 
+      - name: Prepare Maven wrapper
+        run: chmod +x mvnw
+
       - name: Build ${{ matrix.service }}
         run: ./mvnw -B -DskipTests package
 
