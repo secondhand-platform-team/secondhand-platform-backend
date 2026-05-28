@@ -91,8 +91,7 @@ public class PaymentController {
             // 1. XÃ¡c thá»±c chá»¯ kÃ½ tá»« VNPay
             Boolean isValid = paymentService.verifyVnPayCallback(request);
             if (!isValid) {
-                String errorUrl = "http://localhost:3000/payment-failed?status=error&message=" +
-                        URLEncoder.encode("Invalid signature from VNPay", StandardCharsets.UTF_8);
+                String errorUrl = buildFrontendFailedUrl("Invalid signature from VNPay");
                 return ResponseEntity.status(org.springframework.http.HttpStatus.FOUND)
                         .location(URI.create(errorUrl))
                         .build();
@@ -111,8 +110,7 @@ public class PaymentController {
             // 3. Kiá»ƒm tra ResponseCode (00 lÃ  thÃ nh cÃ´ng)
             if ("00".equals(vnp_ResponseCode)) {
                 if (payment == null) {
-                    String errorUrl = "http://localhost:3000/payment-failed?status=error&message=" +
-                            URLEncoder.encode("Payment transaction not found in system", StandardCharsets.UTF_8);
+                    String errorUrl = buildFrontendFailedUrl("Payment transaction not found in system");
                     return ResponseEntity.status(org.springframework.http.HttpStatus.FOUND)
                             .location(URI.create(errorUrl))
                             .build();
@@ -203,18 +201,23 @@ public class PaymentController {
                         order.setPaymentStatus(PaymentStatus.FAILED);
                         order.setUpdatedAt(now);
                         orderRepository.save(order);
+
+                        try {
+                            for (OrderItem item : order.getOrderItems()) {
+                                itemClient.updateItemStatus(item.getItemId(), "ACTIVE");
+                            }
+                        } catch (Exception ignored) {
+                        }
                     }
                 }
 
-                String errorUrl = "http://localhost:3000/payment-failed?status=error&message=" +
-                        URLEncoder.encode("Payment rejected/failed by VNPay: " + vnp_ResponseCode, StandardCharsets.UTF_8);
+                String errorUrl = buildFrontendFailedUrl("Payment rejected/failed by VNPay: " + vnp_ResponseCode);
                 return ResponseEntity.status(org.springframework.http.HttpStatus.FOUND)
                         .location(URI.create(errorUrl))
                         .build();
             }
         } catch (Exception e) {
-            String errorUrl = "http://localhost:3000/payment-failed?status=error&message=" +
-                    URLEncoder.encode("Internal payment verification error: " + e.getMessage(), StandardCharsets.UTF_8);
+            String errorUrl = buildFrontendFailedUrl("Internal payment verification error: " + e.getMessage());
             return ResponseEntity.status(org.springframework.http.HttpStatus.FOUND)
                     .location(URI.create(errorUrl))
                     .build();
