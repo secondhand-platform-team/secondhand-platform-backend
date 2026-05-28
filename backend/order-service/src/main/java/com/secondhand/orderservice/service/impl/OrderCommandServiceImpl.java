@@ -14,14 +14,14 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 /**
- * CQRS — Command Service Implementation
+ * CQRS â€” Command Service Implementation
  * 
- * Chứa tất cả Write operations (tạo, sửa, hủy, chuyển trạng thái).
- * Sau mỗi state change → ghi OrderEvent (Event Sourcing).
+ * Chá»©a táº¥t cáº£ Write operations (táº¡o, sá»­a, há»§y, chuyá»ƒn tráº¡ng thÃ¡i).
+ * Sau má»—i state change â†’ ghi OrderEvent (Event Sourcing).
  * 
- * Pattern áp dụng:
- * - CQRS: Tách riêng Command khỏi Query
- * - Event Sourcing: Ghi lại mọi thay đổi thành immutable events
+ * Pattern Ã¡p dá»¥ng:
+ * - CQRS: TÃ¡ch riÃªng Command khá»i Query
+ * - Event Sourcing: Ghi láº¡i má»i thay Ä‘á»•i thÃ nh immutable events
  * - Observer: Publish notification/wallet events qua RabbitMQ
  */
 @Service("orderCommandService")
@@ -39,7 +39,7 @@ public class OrderCommandServiceImpl implements OrderCommandService {
     private final OrderEventStore eventStore;
 
     // ====================================================================
-    // BUYER: Tạo đơn hàng
+    // BUYER: Táº¡o Ä‘Æ¡n hÃ ng
     // ====================================================================
 
     @Override
@@ -47,142 +47,138 @@ public class OrderCommandServiceImpl implements OrderCommandService {
     public Order createOrder(String buyerId, CreateOrderRequest request) {
         log.info("Creating order for buyer={}, itemId={}", buyerId, request.getItemId());
 
-        // 1. Reserve item (atomic — dùng SELECT FOR UPDATE ở Core Service)
-        Map<String, Object> itemData = itemClient.reserveItem(request.getItemId(), buyerId);
-        String sellerId = (String) itemData.get("userId");
-        String itemName = (String) itemData.get("title");
-        Object priceObj = itemData.get("price");
-        double price = priceObj instanceof Number ? ((Number) priceObj).doubleValue() : Double.parseDouble(priceObj.toString());
+        boolean itemReserved = false;
 
-        // Lấy ảnh đầu tiên làm snapshot
-        String itemImageUrl = null;
-        Object imagesObj = itemData.get("images");
-        if (imagesObj instanceof List) {
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> images = (List<Map<String, Object>>) imagesObj;
-            if (!images.isEmpty()) {
-                itemImageUrl = (String) images.get(0).get("url");
-            }
-        }
-
-        // 2. Không cho mua sản phẩm của chính mình
-        if (buyerId.equals(sellerId)) {
-            itemClient.updateItemStatus(request.getItemId(), "ACTIVE");
-            throw new RuntimeException("Bạn không thể mua sản phẩm của chính mình.");
-        }
-
-        // 3. Tạo Order
-        String orderId = UUID.randomUUID().toString();
-
-        Order order = new Order();
-        order.setId(orderId);
-        order.setBuyerId(buyerId);
-        order.setSellerId(sellerId);
-        order.setTotalPrice(price);
-
-        // 4. Xử lý Payment Method
-        if ("VNPAY".equalsIgnoreCase(request.getPaymentMethod())) {
-            order.setStatus(OrderStatus.PENDING_PAYMENT);
-            order.setPaymentStatus(PaymentStatus.PENDING);
-        } else {
-            order.setStatus(OrderStatus.PAID);
-            order.setPaymentStatus(PaymentStatus.PAID);
-            walletClient.escrowHold(buyerId, price, orderId);
-            order.setEscrowTransactionId("ESCROW-HOLD-" + orderId);
-        }
-
-        order.setReceiverName(request.getReceiverName());
-        order.setReceiverPhone(request.getReceiverPhone());
-        order.setShippingAddress(request.getShippingAddress());
-        order.setCreatedAt(LocalDateTime.now());
-        order.setUpdatedAt(LocalDateTime.now());
-
-        // 5. Tạo OrderItem
-        OrderItem orderItem = new OrderItem();
-        orderItem.setId(UUID.randomUUID().toString());
-        orderItem.setItemId(request.getItemId());
-        orderItem.setItemName(itemName);
-        orderItem.setSellerId(sellerId);
-        orderItem.setPrice(price);
-        orderItem.setItemImageUrl(itemImageUrl);
-        orderItem.setOrder(order);
-        order.setOrderItems(List.of(orderItem));
-
-        // 6. Lưu order
-        Order savedOrder = orderRepository.save(order);
-
-        // 6b. Nếu VNPAY thì tạo payment URL
-        if ("VNPAY".equalsIgnoreCase(request.getPaymentMethod())) {
-            com.secondhand.orderservice.dto.response.PaymentResponse payRes = 
-                paymentService.createVnPayPaymentInternal((long)price, null, "vn", buyerId, null);
-            savedOrder.setPaymentUrl(payRes.getPaymentUrl());
-            
-            paymentRepository.findByTransactionId(payRes.getTransactionId()).ifPresent(payment -> {
-                payment.setOrder(savedOrder);
-                paymentRepository.save(payment);
-            });
-        }
-
-        // 7. Xóa item khỏi cart buyer
         try {
-            cartService.removeItemFromCart(buyerId, request.getItemId());
+            Map<String, Object> itemData = itemClient.reserveItem(request.getItemId(), buyerId);
+            itemReserved = true;
+            String sellerId = (String) itemData.get("userId");
+            String itemName = (String) itemData.get("title");
+            Object priceObj = itemData.get("price");
+            double price = priceObj instanceof Number ? ((Number) priceObj).doubleValue() : Double.parseDouble(priceObj.toString());
+
+            String itemImageUrl = null;
+            Object imagesObj = itemData.get("images");
+            if (imagesObj instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> images = (List<Map<String, Object>>) imagesObj;
+                if (!images.isEmpty()) {
+                    itemImageUrl = (String) images.get(0).get("url");
+                }
+            }
+
+            if (buyerId.equals(sellerId)) {
+                throw new RuntimeException("Bạn không thể mua sản phẩm của chính mình.");
+            }
+
+            String orderId = UUID.randomUUID().toString();
+
+            Order order = new Order();
+            order.setId(orderId);
+            order.setBuyerId(buyerId);
+            order.setSellerId(sellerId);
+            order.setTotalPrice(price);
+
+            if ("VNPAY".equalsIgnoreCase(request.getPaymentMethod())) {
+                order.setStatus(OrderStatus.PENDING_PAYMENT);
+                order.setPaymentStatus(PaymentStatus.PENDING);
+            } else {
+                order.setStatus(OrderStatus.PAID);
+                order.setPaymentStatus(PaymentStatus.PAID);
+                walletClient.escrowHold(buyerId, price, orderId);
+                order.setEscrowTransactionId("ESCROW-HOLD-" + orderId);
+            }
+
+            order.setReceiverName(request.getReceiverName());
+            order.setReceiverPhone(request.getReceiverPhone());
+            order.setShippingAddress(request.getShippingAddress());
+            order.setCreatedAt(LocalDateTime.now());
+            order.setUpdatedAt(LocalDateTime.now());
+
+            OrderItem orderItem = new OrderItem();
+            orderItem.setId(UUID.randomUUID().toString());
+            orderItem.setItemId(request.getItemId());
+            orderItem.setItemName(itemName);
+            orderItem.setSellerId(sellerId);
+            orderItem.setPrice(price);
+            orderItem.setItemImageUrl(itemImageUrl);
+            orderItem.setOrder(order);
+            order.setOrderItems(List.of(orderItem));
+
+            Order savedOrder = orderRepository.save(order);
+
+            if ("VNPAY".equalsIgnoreCase(request.getPaymentMethod())) {
+                com.secondhand.orderservice.dto.response.PaymentResponse payRes =
+                    paymentService.createVnPayPaymentInternal((long) price, null, "vn", buyerId, null);
+                savedOrder.setPaymentUrl(payRes.getPaymentUrl());
+
+                paymentRepository.findByTransactionId(payRes.getTransactionId()).ifPresent(payment -> {
+                    payment.setOrder(savedOrder);
+                    paymentRepository.save(payment);
+                });
+            }
+
+            try {
+                cartService.removeItemFromCart(buyerId, request.getItemId());
+            } catch (Exception e) {
+                log.warn("Failed to remove item from cart: {}", e.getMessage());
+            }
+
+            Map<String, Object> metadata = new LinkedHashMap<>();
+            metadata.put("itemId", request.getItemId());
+            metadata.put("itemName", itemName);
+            metadata.put("price", price);
+            metadata.put("paymentMethod", request.getPaymentMethod());
+            eventStore.recordEvent(orderId, OrderEventType.ORDER_CREATED, buyerId, "BUYER", metadata, savedOrder);
+
+            if (!"VNPAY".equalsIgnoreCase(request.getPaymentMethod())) {
+                Map<String, Object> escrowMeta = new LinkedHashMap<>();
+                escrowMeta.put("amount", price);
+                escrowMeta.put("type", "HOLD");
+                eventStore.recordEvent(orderId, OrderEventType.ESCROW_HELD, buyerId, "SYSTEM", escrowMeta, savedOrder);
+            }
+
+            notificationClient.sendNotification(
+                    buyerId,
+                    "Đặt hàng thành công! Đơn hàng #" + orderId.substring(0, 8).toUpperCase() + " đang chờ người bán xử lý.",
+                    "ORDER_CREATED",
+                    request.getItemId()
+            );
+
+            notificationClient.sendNotification(
+                    sellerId,
+                    "Sản phẩm \"" + itemName + "\" đã được đặt mua! Vui lòng chuẩn bị hàng.",
+                    "ORDER_NEW_FOR_SELLER",
+                    request.getItemId()
+            );
+
+            log.info("Order {} created successfully, escrow held for buyer={}", orderId, buyerId);
+            return savedOrder;
+        } catch (RuntimeException e) {
+            releaseReservedItem(request.getItemId(), itemReserved, e);
+            throw e;
         } catch (Exception e) {
-            log.warn("Failed to remove item from cart: {}", e.getMessage());
+            releaseReservedItem(request.getItemId(), itemReserved, e);
+            throw new RuntimeException("Không thể tạo đơn hàng: " + e.getMessage(), e);
         }
-
-        // 8. Event Sourcing — ghi ORDER_CREATED event
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("itemId", request.getItemId());
-        metadata.put("itemName", itemName);
-        metadata.put("price", price);
-        metadata.put("paymentMethod", request.getPaymentMethod());
-        eventStore.recordEvent(orderId, OrderEventType.ORDER_CREATED, buyerId, "BUYER", metadata, savedOrder);
-
-        // 8b. Ghi ESCROW_HELD event nếu thanh toán ví
-        if (!"VNPAY".equalsIgnoreCase(request.getPaymentMethod())) {
-            Map<String, Object> escrowMeta = new LinkedHashMap<>();
-            escrowMeta.put("amount", price);
-            escrowMeta.put("type", "HOLD");
-            eventStore.recordEvent(orderId, OrderEventType.ESCROW_HELD, buyerId, "SYSTEM", escrowMeta, savedOrder);
-        }
-
-        // 9. Notify Buyer
-        notificationClient.sendNotification(
-                buyerId,
-                "Đặt hàng thành công! Đơn hàng #" + orderId.substring(0, 8).toUpperCase() + " đang chờ người bán xử lý.",
-                "ORDER_CREATED",
-                request.getItemId()
-        );
-
-        // 10. Notify Seller
-        notificationClient.sendNotification(
-                sellerId,
-                "Sản phẩm \"" + itemName + "\" đã được đặt mua! Vui lòng chuẩn bị hàng.",
-                "ORDER_NEW_FOR_SELLER",
-                request.getItemId()
-        );
-
-        log.info("Order {} created successfully, escrow held for buyer={}", orderId, buyerId);
-        return savedOrder;
     }
-
     // ====================================================================
-    // BUYER: Hủy đơn
+    // BUYER: Há»§y Ä‘Æ¡n
     // ====================================================================
 
     @Override
     @Transactional
     public Order cancelOrder(String orderId, String buyerId) {
         Order order = orderRepository.findByIdAndBuyerId(orderId, buyerId)
-                .orElseThrow(() -> new RuntimeException("Đơn hàng không tồn tại."));
+                .orElseThrow(() -> new RuntimeException("ÄÆ¡n hÃ ng khÃ´ng tá»“n táº¡i."));
 
         if (order.getStatus() != OrderStatus.PAID) {
-            throw new RuntimeException("Chỉ có thể hủy đơn khi đang ở trạng thái 'Đã thanh toán'.");
+            throw new RuntimeException("Chá»‰ cÃ³ thá»ƒ há»§y Ä‘Æ¡n khi Ä‘ang á»Ÿ tráº¡ng thÃ¡i 'ÄÃ£ thanh toÃ¡n'.");
         }
 
         String oldStatus = order.getStatus().name();
         order.setStatus(OrderStatus.CANCELLED);
-        order.setCancelReason("Người mua hủy đơn");
+        order.setCancelReason("NgÆ°á»i mua há»§y Ä‘Æ¡n");
         order.setUpdatedAt(LocalDateTime.now());
 
         walletClient.escrowRefund(buyerId, order.getTotalPrice(), orderId);
@@ -195,7 +191,7 @@ public class OrderCommandServiceImpl implements OrderCommandService {
         // Event Sourcing
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("oldStatus", oldStatus);
-        metadata.put("reason", "Người mua hủy đơn");
+        metadata.put("reason", "NgÆ°á»i mua há»§y Ä‘Æ¡n");
         eventStore.recordEvent(orderId, OrderEventType.ORDER_CANCELLED, buyerId, "BUYER", metadata, saved);
 
         Map<String, Object> refundMeta = new LinkedHashMap<>();
@@ -205,10 +201,10 @@ public class OrderCommandServiceImpl implements OrderCommandService {
 
         // Notify
         notificationClient.sendNotification(order.getSellerId(),
-                "Đơn hàng #" + orderId.substring(0, 8).toUpperCase() + " đã bị người mua hủy.",
+                "ÄÆ¡n hÃ ng #" + orderId.substring(0, 8).toUpperCase() + " Ä‘Ã£ bá»‹ ngÆ°á»i mua há»§y.",
                 "ORDER_CANCELLED", itemId);
         notificationClient.sendNotification(buyerId,
-                "Đơn hàng #" + orderId.substring(0, 8).toUpperCase() + " đã hủy thành công. Tiền đã hoàn vào ví.",
+                "ÄÆ¡n hÃ ng #" + orderId.substring(0, 8).toUpperCase() + " Ä‘Ã£ há»§y thÃ nh cÃ´ng. Tiá»n Ä‘Ã£ hoÃ n vÃ o vÃ­.",
                 "ORDER_CANCELLED", itemId);
 
         log.info("Order {} cancelled by buyer {}", orderId, buyerId);
@@ -216,17 +212,17 @@ public class OrderCommandServiceImpl implements OrderCommandService {
     }
 
     // ====================================================================
-    // BUYER: Xác nhận nhận hàng
+    // BUYER: XÃ¡c nháº­n nháº­n hÃ ng
     // ====================================================================
 
     @Override
     @Transactional
     public Order confirmReceived(String orderId, String buyerId) {
         Order order = orderRepository.findByIdAndBuyerId(orderId, buyerId)
-                .orElseThrow(() -> new RuntimeException("Đơn hàng không tồn tại."));
+                .orElseThrow(() -> new RuntimeException("ÄÆ¡n hÃ ng khÃ´ng tá»“n táº¡i."));
 
         if (order.getStatus() != OrderStatus.DELIVERED) {
-            throw new RuntimeException("Chỉ có thể xác nhận nhận hàng khi đơn đã giao.");
+            throw new RuntimeException("Chá»‰ cÃ³ thá»ƒ xÃ¡c nháº­n nháº­n hÃ ng khi Ä‘Æ¡n Ä‘Ã£ giao.");
         }
 
         order.setStatus(OrderStatus.COMPLETED);
@@ -250,10 +246,10 @@ public class OrderCommandServiceImpl implements OrderCommandService {
 
         // Notify
         notificationClient.sendNotification(order.getSellerId(),
-                "Người mua đã xác nhận nhận hàng! " + (long) order.getTotalPrice().doubleValue() + " VNĐ đã chuyển vào ví của bạn.",
+                "NgÆ°á»i mua Ä‘Ã£ xÃ¡c nháº­n nháº­n hÃ ng! " + (long) order.getTotalPrice().doubleValue() + " VNÄ Ä‘Ã£ chuyá»ƒn vÃ o vÃ­ cá»§a báº¡n.",
                 "ORDER_COMPLETED", itemId);
         notificationClient.sendNotification(buyerId,
-                "Cảm ơn bạn! Đơn hàng #" + orderId.substring(0, 8).toUpperCase() + " đã hoàn tất.",
+                "Cáº£m Æ¡n báº¡n! ÄÆ¡n hÃ ng #" + orderId.substring(0, 8).toUpperCase() + " Ä‘Ã£ hoÃ n táº¥t.",
                 "ORDER_COMPLETED", itemId);
 
         log.info("Order {} confirmed received by buyer {}", orderId, buyerId);
@@ -261,17 +257,17 @@ public class OrderCommandServiceImpl implements OrderCommandService {
     }
 
     // ====================================================================
-    // BUYER: Khiếu nại
+    // BUYER: Khiáº¿u náº¡i
     // ====================================================================
 
     @Override
     @Transactional
     public Order disputeOrder(String orderId, String buyerId, String reason) {
         Order order = orderRepository.findByIdAndBuyerId(orderId, buyerId)
-                .orElseThrow(() -> new RuntimeException("Đơn hàng không tồn tại."));
+                .orElseThrow(() -> new RuntimeException("ÄÆ¡n hÃ ng khÃ´ng tá»“n táº¡i."));
 
         if (order.getStatus() != OrderStatus.DELIVERED) {
-            throw new RuntimeException("Chỉ có thể khiếu nại khi đơn đã giao.");
+            throw new RuntimeException("Chá»‰ cÃ³ thá»ƒ khiáº¿u náº¡i khi Ä‘Æ¡n Ä‘Ã£ giao.");
         }
 
         order.setStatus(OrderStatus.DISPUTED);
@@ -289,10 +285,10 @@ public class OrderCommandServiceImpl implements OrderCommandService {
 
         // Notify
         notificationClient.sendNotification(order.getSellerId(),
-                "Đơn hàng #" + orderId.substring(0, 8).toUpperCase() + " đang bị khiếu nại: \"" + reason + "\". Chờ admin xử lý.",
+                "ÄÆ¡n hÃ ng #" + orderId.substring(0, 8).toUpperCase() + " Ä‘ang bá»‹ khiáº¿u náº¡i: \"" + reason + "\". Chá» admin xá»­ lÃ½.",
                 "ORDER_DISPUTED", itemId);
         notificationClient.sendNotification(buyerId,
-                "Khiếu nại đơn hàng #" + orderId.substring(0, 8).toUpperCase() + " đã được ghi nhận. Admin sẽ xử lý sớm.",
+                "Khiáº¿u náº¡i Ä‘Æ¡n hÃ ng #" + orderId.substring(0, 8).toUpperCase() + " Ä‘Ã£ Ä‘Æ°á»£c ghi nháº­n. Admin sáº½ xá»­ lÃ½ sá»›m.",
                 "ORDER_DISPUTED", itemId);
 
         log.info("Order {} disputed by buyer {}: {}", orderId, buyerId, reason);
@@ -300,7 +296,7 @@ public class OrderCommandServiceImpl implements OrderCommandService {
     }
 
     // ====================================================================
-    // SELLER: Chuẩn bị hàng
+    // SELLER: Chuáº©n bá»‹ hÃ ng
     // ====================================================================
 
     @Override
@@ -309,7 +305,7 @@ public class OrderCommandServiceImpl implements OrderCommandService {
         Order order = getOrderForSeller(orderId, sellerId);
 
         if (order.getStatus() != OrderStatus.PAID) {
-            throw new RuntimeException("Chỉ có thể chuẩn bị hàng khi đơn ở trạng thái 'Đã thanh toán'.");
+            throw new RuntimeException("Chá»‰ cÃ³ thá»ƒ chuáº©n bá»‹ hÃ ng khi Ä‘Æ¡n á»Ÿ tráº¡ng thÃ¡i 'ÄÃ£ thanh toÃ¡n'.");
         }
 
         order.setStatus(OrderStatus.PREPARING);
@@ -322,10 +318,10 @@ public class OrderCommandServiceImpl implements OrderCommandService {
 
         // Notify buyer
         notificationClient.sendNotification(order.getBuyerId(),
-                "Người bán đang chuẩn bị đóng gói hàng cho đơn #" + orderId.substring(0, 8).toUpperCase() + ".",
+                "NgÆ°á»i bÃ¡n Ä‘ang chuáº©n bá»‹ Ä‘Ã³ng gÃ³i hÃ ng cho Ä‘Æ¡n #" + orderId.substring(0, 8).toUpperCase() + ".",
                 "ORDER_PREPARING", itemId);
 
-        log.info("Order {} → PREPARING by seller {}", orderId, sellerId);
+        log.info("Order {} â†’ PREPARING by seller {}", orderId, sellerId);
         return saved;
     }
 
@@ -339,7 +335,7 @@ public class OrderCommandServiceImpl implements OrderCommandService {
         Order order = getOrderForSeller(orderId, sellerId);
 
         if (order.getStatus() != OrderStatus.PREPARING) {
-            throw new RuntimeException("Chỉ giao cho shipper khi đơn đang 'Chuẩn bị hàng'.");
+            throw new RuntimeException("Chá»‰ giao cho shipper khi Ä‘Æ¡n Ä‘ang 'Chuáº©n bá»‹ hÃ ng'.");
         }
 
         order.setStatus(OrderStatus.HANDOVER_TO_SHIPPER);
@@ -365,16 +361,16 @@ public class OrderCommandServiceImpl implements OrderCommandService {
 
         // Notify buyer
         notificationClient.sendNotification(order.getBuyerId(),
-                "Đơn hàng #" + orderId.substring(0, 8).toUpperCase() + " đã giao cho " +
-                        shipmentData.getCarrier() + ". Mã vận đơn: " + shipmentData.getTrackingCode() + ".",
+                "ÄÆ¡n hÃ ng #" + orderId.substring(0, 8).toUpperCase() + " Ä‘Ã£ giao cho " +
+                        shipmentData.getCarrier() + ". MÃ£ váº­n Ä‘Æ¡n: " + shipmentData.getTrackingCode() + ".",
                 "ORDER_HANDOVER", itemId);
 
-        log.info("Order {} → HANDOVER_TO_SHIPPER by seller {}", orderId, sellerId);
+        log.info("Order {} â†’ HANDOVER_TO_SHIPPER by seller {}", orderId, sellerId);
         return saved;
     }
 
     // ====================================================================
-    // SELLER: Hủy đơn
+    // SELLER: Há»§y Ä‘Æ¡n
     // ====================================================================
 
     @Override
@@ -383,11 +379,11 @@ public class OrderCommandServiceImpl implements OrderCommandService {
         Order order = getOrderForSeller(orderId, sellerId);
 
         if (order.getStatus() != OrderStatus.PAID && order.getStatus() != OrderStatus.PREPARING) {
-            throw new RuntimeException("Chỉ có thể hủy đơn khi ở trạng thái 'Đã thanh toán' hoặc 'Đang chuẩn bị'.");
+            throw new RuntimeException("Chá»‰ cÃ³ thá»ƒ há»§y Ä‘Æ¡n khi á»Ÿ tráº¡ng thÃ¡i 'ÄÃ£ thanh toÃ¡n' hoáº·c 'Äang chuáº©n bá»‹'.");
         }
 
         order.setStatus(OrderStatus.CANCELLED);
-        order.setCancelReason("Người bán hủy đơn");
+        order.setCancelReason("NgÆ°á»i bÃ¡n há»§y Ä‘Æ¡n");
         order.setUpdatedAt(LocalDateTime.now());
 
         walletClient.escrowRefund(order.getBuyerId(), order.getTotalPrice(), orderId);
@@ -399,17 +395,17 @@ public class OrderCommandServiceImpl implements OrderCommandService {
 
         // Event Sourcing
         Map<String, Object> metadata = new LinkedHashMap<>();
-        metadata.put("reason", "Người bán hủy đơn");
+        metadata.put("reason", "NgÆ°á»i bÃ¡n há»§y Ä‘Æ¡n");
         eventStore.recordEvent(orderId, OrderEventType.ORDER_CANCELLED, sellerId, "SELLER", metadata, saved);
         eventStore.recordEvent(orderId, OrderEventType.ESCROW_REFUNDED, order.getBuyerId(), "SYSTEM",
                 Map.of("amount", order.getTotalPrice(), "type", "REFUND"), saved);
 
         // Notify
         notificationClient.sendNotification(order.getBuyerId(),
-                "Đơn hàng #" + orderId.substring(0, 8).toUpperCase() + " đã bị người bán hủy. Tiền đã hoàn vào ví.",
+                "ÄÆ¡n hÃ ng #" + orderId.substring(0, 8).toUpperCase() + " Ä‘Ã£ bá»‹ ngÆ°á»i bÃ¡n há»§y. Tiá»n Ä‘Ã£ hoÃ n vÃ o vÃ­.",
                 "ORDER_CANCELLED", itemId);
         notificationClient.sendNotification(sellerId,
-                "Bạn đã hủy đơn hàng #" + orderId.substring(0, 8).toUpperCase() + ".",
+                "Báº¡n Ä‘Ã£ há»§y Ä‘Æ¡n hÃ ng #" + orderId.substring(0, 8).toUpperCase() + ".",
                 "ORDER_CANCELLED", itemId);
 
         log.info("Order {} cancelled by seller {}", orderId, sellerId);
@@ -417,14 +413,14 @@ public class OrderCommandServiceImpl implements OrderCommandService {
     }
 
     // ====================================================================
-    // ADMIN: Cập nhật trạng thái
+    // ADMIN: Cáº­p nháº­t tráº¡ng thÃ¡i
     // ====================================================================
 
     @Override
     @Transactional
     public Order updateOrderStatus(String orderId, String status) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Đơn hàng không tồn tại."));
+                .orElseThrow(() -> new RuntimeException("ÄÆ¡n hÃ ng khÃ´ng tá»“n táº¡i."));
         
         String oldStatus = order.getStatus().name();
         order.setStatus(OrderStatus.valueOf(status));
@@ -441,17 +437,17 @@ public class OrderCommandServiceImpl implements OrderCommandService {
     }
 
     // ====================================================================
-    // ADMIN: Xử lý dispute
+    // ADMIN: Xá»­ lÃ½ dispute
     // ====================================================================
 
     @Override
     @Transactional
     public Order resolveDispute(String orderId, String action) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Đơn hàng không tồn tại."));
+                .orElseThrow(() -> new RuntimeException("ÄÆ¡n hÃ ng khÃ´ng tá»“n táº¡i."));
 
         if (order.getStatus() != OrderStatus.DISPUTED) {
-            throw new RuntimeException("Đơn hàng không ở trạng thái tranh chấp.");
+            throw new RuntimeException("ÄÆ¡n hÃ ng khÃ´ng á»Ÿ tráº¡ng thÃ¡i tranh cháº¥p.");
         }
 
         String itemId = order.getOrderItems().get(0).getItemId();
@@ -462,10 +458,10 @@ public class OrderCommandServiceImpl implements OrderCommandService {
             itemClient.updateItemStatus(itemId, "ACTIVE");
 
             notificationClient.sendNotification(order.getBuyerId(),
-                    "Khiếu nại #" + orderId.substring(0, 8).toUpperCase() + " được chấp nhận. Tiền đã hoàn vào ví.",
+                    "Khiáº¿u náº¡i #" + orderId.substring(0, 8).toUpperCase() + " Ä‘Æ°á»£c cháº¥p nháº­n. Tiá»n Ä‘Ã£ hoÃ n vÃ o vÃ­.",
                     "ORDER_DISPUTE_RESOLVED", itemId);
             notificationClient.sendNotification(order.getSellerId(),
-                    "Khiếu nại #" + orderId.substring(0, 8).toUpperCase() + " đã xử lý. Tiền hoàn cho người mua.",
+                    "Khiáº¿u náº¡i #" + orderId.substring(0, 8).toUpperCase() + " Ä‘Ã£ xá»­ lÃ½. Tiá»n hoÃ n cho ngÆ°á»i mua.",
                     "ORDER_DISPUTE_RESOLVED", itemId);
 
             // Event Sourcing
@@ -480,10 +476,10 @@ public class OrderCommandServiceImpl implements OrderCommandService {
             itemClient.updateItemStatus(itemId, "SOLD");
 
             notificationClient.sendNotification(order.getSellerId(),
-                    "Khiếu nại #" + orderId.substring(0, 8).toUpperCase() + " đã xử lý. Tiền đã chuyển vào ví.",
+                    "Khiáº¿u náº¡i #" + orderId.substring(0, 8).toUpperCase() + " Ä‘Ã£ xá»­ lÃ½. Tiá»n Ä‘Ã£ chuyá»ƒn vÃ o vÃ­.",
                     "ORDER_DISPUTE_RESOLVED", itemId);
             notificationClient.sendNotification(order.getBuyerId(),
-                    "Khiếu nại #" + orderId.substring(0, 8).toUpperCase() + " đã được xử lý.",
+                    "Khiáº¿u náº¡i #" + orderId.substring(0, 8).toUpperCase() + " Ä‘Ã£ Ä‘Æ°á»£c xá»­ lÃ½.",
                     "ORDER_DISPUTE_RESOLVED", itemId);
 
             // Event Sourcing
@@ -492,7 +488,7 @@ public class OrderCommandServiceImpl implements OrderCommandService {
             eventStore.recordEvent(orderId, OrderEventType.ESCROW_RELEASED, order.getSellerId(), "SYSTEM",
                     Map.of("amount", order.getTotalPrice()), order);
         } else {
-            throw new RuntimeException("Action không hợp lệ. Chọn 'refund' hoặc 'release'.");
+            throw new RuntimeException("Action khÃ´ng há»£p lá»‡. Chá»n 'refund' hoáº·c 'release'.");
         }
 
         order.setUpdatedAt(LocalDateTime.now());
@@ -505,13 +501,28 @@ public class OrderCommandServiceImpl implements OrderCommandService {
     // Helper
     // ====================================================================
 
+
+    private void releaseReservedItem(String itemId, boolean itemReserved, Exception cause) {
+        if (!itemReserved) {
+            return;
+        }
+
+        try {
+            itemClient.updateItemStatus(itemId, "ACTIVE");
+            log.warn("Released reserved item {} after order creation failed: {}", itemId, cause.getMessage());
+        } catch (Exception releaseError) {
+            log.error("Failed to release reserved item {} after order creation failure", itemId, releaseError);
+        }
+    }
     private Order getOrderForSeller(String orderId, String sellerId) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Đơn hàng không tồn tại."));
+                .orElseThrow(() -> new RuntimeException("ÄÆ¡n hÃ ng khÃ´ng tá»“n táº¡i."));
 
         if (!sellerId.equals(order.getSellerId())) {
-            throw new RuntimeException("Bạn không có quyền thao tác đơn hàng này.");
+            throw new RuntimeException("Báº¡n khÃ´ng cÃ³ quyá»n thao tÃ¡c Ä‘Æ¡n hÃ ng nÃ y.");
         }
         return order;
     }
 }
+
+
