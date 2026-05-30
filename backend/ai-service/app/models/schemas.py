@@ -20,11 +20,27 @@ class ProductResult(BaseModel):
     image_url: str = ""
 
 
+class ActionItem(BaseModel):
+    item_id: str = Field(..., description="Mã sản phẩm")
+    title: str = Field(..., description="Tên sản phẩm")
+
+
 class ChatResponse(BaseModel):
     reply: str = Field(..., description="Phản hồi từ AI")
     products: list[ProductResult] = Field(default_factory=list, description="Danh sách sản phẩm gợi ý")
     suggestions: list[str] = Field(default_factory=list, description="Gợi ý câu hỏi tiếp theo")
     intent: str = Field(default="general", description="Intent được phát hiện")
+    target_page: Optional[str] = Field(None, description="Đường dẫn trang đích chuyển hướng")
+    title: Optional[str] = Field(None, description="Tên sản phẩm đăng bán")
+    price: Optional[int] = Field(None, description="Giá sản phẩm")
+    condition: Optional[str] = Field(None, description="Tình trạng sản phẩm")
+    city: Optional[str] = Field(None, description="Tỉnh/Thành phố")
+    district: Optional[str] = Field(None, description="Quận/Huyện")
+    description: Optional[str] = Field(None, description="Mô tả sản phẩm")
+    category_hint: Optional[str] = Field(None, description="Gợi ý danh mục")
+    scope: Optional[str] = Field(None, description="Phạm vi tác vụ ('current' hoặc 'search')")
+    quantity: Optional[int] = Field(None, description="Số lượng yêu cầu")
+    action_items: list[ActionItem] = Field(default_factory=list, description="Danh sách sản phẩm cho tác vụ giao dịch")
 
 
 # ── Recommendation ──────────────────────────────────────────────
