@@ -19,8 +19,20 @@ public class ChatWebSocketController {
     @MessageMapping("/chat.send")
     public void sendMessage(@Payload ChatMessageRequest request) {
         ChatMessageResponse response = chatMessageService.sendMessage(request);
+
+        // 1. Gửi tin nhắn đến topic conversation (cho chat window đang mở)
         messagingTemplate.convertAndSend(
                 "/topic/conversations/" + response.getConversationId(),
                 response);
+
+        // 2. Gửi event đến topic user conversations (để cập nhật danh sách hội thoại toàn cục)
+        messagingTemplate.convertAndSend(
+                "/topic/users/" + response.getSenderId() + "/conversations",
+                response);
+        if (response.getReceiverId() != null && !response.getReceiverId().equals(response.getSenderId())) {
+            messagingTemplate.convertAndSend(
+                    "/topic/users/" + response.getReceiverId() + "/conversations",
+                    response);
+        }
     }
 }

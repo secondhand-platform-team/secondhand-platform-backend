@@ -41,6 +41,7 @@ services:
     restart: unless-stopped
     env_file: .env.prod
     environment:
+      JAVA_TOOL_OPTIONS: "-Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/secondhand_auth_db
       ORDER_SERVICE_URL: http://order-service:8083
       CHAT_SERVICE_URL: http://chat-service:8084
@@ -62,6 +63,7 @@ services:
     restart: unless-stopped
     env_file: .env.prod
     environment:
+      JAVA_TOOL_OPTIONS: "-Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/secondhand_core_db
       AUTH_SERVICE_URL: http://auth-service:8081
       ORDER_SERVICE_URL: http://order-service:8083
@@ -87,6 +89,7 @@ services:
     restart: unless-stopped
     env_file: .env.prod
     environment:
+      JAVA_TOOL_OPTIONS: "-Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/secondhand_order_db
       CORE_SERVICE_URL: http://core-service:8082
       AUTH_SERVICE_URL: http://auth-service:8081
@@ -108,6 +111,7 @@ services:
     restart: unless-stopped
     env_file: .env.prod
     environment:
+      JAVA_TOOL_OPTIONS: "-Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8"
       SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/secondhand_chat_db
       SPRING_REDIS_HOST: redis
       SPRING_RABBITMQ_HOST: rabbitmq

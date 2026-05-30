@@ -147,6 +147,7 @@ services:
     env_file:
       - ./.env
     environment:
+      JAVA_TOOL_OPTIONS: "-Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8"
       SPRING_DATASOURCE_URL: jdbc:postgresql://ktpm-postgres:5432/secondhand_auth_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
@@ -196,6 +197,7 @@ services:
     env_file:
       - ./.env
     environment:
+      JAVA_TOOL_OPTIONS: "-Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8"
       SPRING_DATASOURCE_URL: jdbc:postgresql://ktpm-postgres:5432/secondhand_core_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
@@ -251,10 +253,19 @@ services:
     env_file:
       - ./.env
     environment:
+      JAVA_TOOL_OPTIONS: "-Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8"
       SPRING_DATASOURCE_URL: jdbc:postgresql://ktpm-postgres:5432/secondhand_order_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       APP_CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:5173,http://localhost:5174"
+      CORE_SERVICE_URL: http://core-service:8082
+      AUTH_SERVICE_URL: http://auth-service:8081
+      FRONTEND_BASE_URL: "http://localhost:3000"
+      VNPAY_RETURN_URL: "http://localhost:8000/order/api/payment/vnpay-callback"
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: admin
+      SPRING_RABBITMQ_PASSWORD: admin123
     develop:
       watch:
         - action: sync+restart
@@ -285,6 +296,7 @@ services:
     env_file:
       - ./.env
     environment:
+      JAVA_TOOL_OPTIONS: "-Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8"
       SPRING_DATA_MONGODB_URI: mongodb://ktpm-mongodb:27017/secondhand_chat_db
       SPRING_REDIS_HOST: ktpm-redis
       SPRING_REDIS_PORT: 6379
