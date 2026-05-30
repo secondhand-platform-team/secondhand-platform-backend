@@ -124,6 +124,18 @@ public class WalletController {
     }
 
     /**
+     * Lấy toàn bộ lịch sử giao dịch hệ thống (chỉ dành cho Admin)
+     * GET /api/wallet/admin/transactions?page=0&size=10
+     */
+    @GetMapping("/admin/transactions")
+    public ResponseEntity<Page<WalletTransactionResponse>> getAllTransactionsForAdmin(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Page<WalletTransactionResponse> result = walletService.getAllTransactionsForAdmin(page, size);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
      * API Nội bộ: Trừ tiền ví (gọi từ order-service)
      * POST /api/wallet/internal/deduct
      */

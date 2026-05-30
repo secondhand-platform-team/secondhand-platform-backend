@@ -27,6 +27,9 @@ public interface WalletService {
     // Lịch sử giao dịch - có phân trang
     Page<WalletTransactionResponse> getTransactionHistoryPaged(int page, int size);
 
+    // Lấy toàn bộ giao dịch hệ thống cho Admin
+    Page<WalletTransactionResponse> getAllTransactionsForAdmin(int page, int size);
+
     // ====== Escrow Methods ======
 
     /** Tạm giữ tiền buyer khi checkout → escrow */

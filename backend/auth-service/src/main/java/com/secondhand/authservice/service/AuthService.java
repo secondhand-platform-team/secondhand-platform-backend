@@ -3,6 +3,7 @@ package com.secondhand.authservice.service;
 import com.secondhand.authservice.dto.request.LoginRequest;
 import com.secondhand.authservice.dto.request.RegisterRequest;
 import com.secondhand.authservice.dto.request.UpdateProfileRequest;
+import com.secondhand.authservice.dto.request.ChangePasswordRequest;
 import com.secondhand.authservice.dto.response.AuthResponse;
 import com.secondhand.authservice.dto.response.MessageResponse;
 import com.secondhand.authservice.dto.response.UserInfoResponse;
@@ -31,4 +32,6 @@ public interface AuthService {
     UserProfileInfoResponse updateProfile(String identifier, UpdateProfileRequest request);
 
     UserProfileInfoResponse updateAvatar(String identifier, MultipartFile file) throws IOException;
+
+    void changePassword(String identifier, ChangePasswordRequest request);
 }

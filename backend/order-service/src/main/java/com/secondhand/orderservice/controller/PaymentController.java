@@ -57,7 +57,7 @@ public class PaymentController {
     @GetMapping("/vnpay_return")
     public ResponseEntity<?> vnpayReturn(HttpServletRequest request) {
         try {
-            // BÆ°á»›c quan trá»ng nháº¥t: XÃ¡c thá»±c chá»¯ kÃ½ tá»« VNPay
+            // Bước quan trọng nhất: Xác thực chữ ký từ VNPay
             Boolean isValid = paymentService.verifyVnPayCallback(request);
 
             if (isValid) {
@@ -71,7 +71,7 @@ public class PaymentController {
                         .body(new PaymentResponse("00", "Payment verified: " + result,
                                 "Order: " + orderId + ", ResponseCode: " + vnp_ResponseCode, transactionId));
             } else {
-                // Náº¿u rÆ¡i vÃ o Ä‘Ã¢y, hÃ£y kiá»ƒm tra láº¡i vnp_HashSecret trong file config
+                // Nếu rơi vào đây, hãy kiểm tra lại vnp_HashSecret trong file config
                 return ResponseEntity.badRequest()
                         .body(new PaymentResponse("99", "Invalid signature", null, null));
             }
@@ -88,7 +88,7 @@ public class PaymentController {
             @RequestParam(required = false) String vnp_TxnRef,
             @RequestParam(required = false) String vnp_TransactionNo) {
         try {
-            // 1. XÃ¡c thá»±c chá»¯ kÃ½ tá»« VNPay
+            // 1. Xác thực chữ ký từ VNPay
             Boolean isValid = paymentService.verifyVnPayCallback(request);
             if (!isValid) {
                 String errorUrl = buildFrontendFailedUrl("Invalid signature from VNPay");
@@ -97,7 +97,7 @@ public class PaymentController {
                         .build();
             }
 
-            // 2. TÃ¬m Payment cÃ³ transactionId chá»©a vnp_TxnRef
+            // 2. Tìm Payment có transactionId chứa vnp_TxnRef
             Payment payment = null;
             if (vnp_TxnRef != null) {
                 List<Payment> payments = paymentRepository.findAll();
@@ -107,7 +107,7 @@ public class PaymentController {
                         .orElse(null);
             }
 
-            // 3. Kiá»ƒm tra ResponseCode (00 lÃ  thÃ nh cÃ´ng)
+            // 3. Kiểm tra ResponseCode (00 là thành công)
             if ("00".equals(vnp_ResponseCode)) {
                 if (payment == null) {
                     String errorUrl = buildFrontendFailedUrl("Payment transaction not found in system");
@@ -116,13 +116,13 @@ public class PaymentController {
                             .build();
                 }
 
-                // Cáº­p nháº­t tráº¡ng thÃ¡i Payment
+                // Cập nhật trạng thái Payment
                 LocalDateTime now = LocalDateTime.now();
                 payment.setStatus(PaymentStatus.PAID);
                 payment.setPaidAt(now);
                 paymentRepository.save(payment);
 
-                // Cáº­p nháº­t tráº¡ng thÃ¡i Order liÃªn káº¿t
+                // Cập nhật trạng thái Order liên kết
                 Order order = payment.getOrder();
                 if (order != null) {
                     order.setStatus(OrderStatus.PAID);
@@ -130,9 +130,9 @@ public class PaymentController {
                     order.setUpdatedAt(now);
                     orderRepository.save(order);
 
-                    // Náº¡p tiá»n vÃ o vÃ­ ná»™i bá»™ tá»« giao dá»‹ch VNPay
+                    // Nạp tiền vào ví nội bộ từ giao dịch VNPay
                     try {
-                        walletClient.add(order.getBuyerId(), payment.getAmount(), "Náº¡p tiá»n qua VNPay cho Ä‘Æ¡n hÃ ng #" + order.getId().substring(0, 8).toUpperCase());
+                        walletClient.add(order.getBuyerId(), payment.getAmount(), "Nạp tiền qua VNPay cho đơn hàng #" + order.getId().substring(0, 8).toUpperCase());
                         walletClient.escrowHold(order.getBuyerId(), payment.getAmount(), order.getId());
                         order.setEscrowTransactionId("ESCROW-HOLD-" + order.getId());
                         orderRepository.save(order);
@@ -140,7 +140,7 @@ public class PaymentController {
                         // ignore if already done or failed
                     }
 
-                    // XÃ³a cÃ¡c sáº£n pháº©m Ä‘Ã£ mua khá»i giá» hÃ ng cá»§a ngÆ°á»i mua khi thanh toÃ¡n thÃ nh cÃ´ng
+                    // Xóa các sản phẩm đã mua khỏi giỏ hàng của người mua khi thanh toán thành công
                     try {
                         for (OrderItem item : order.getOrderItems()) {
                             try {
@@ -149,17 +149,17 @@ public class PaymentController {
                         }
                     } catch (Exception ignored) {}
 
-                    // Gá»­i thÃ´ng bÃ¡o Ä‘áº¿n ngÆ°á»i mua
+                    // Gửi thông báo đến người mua
                     try {
                         notificationClient.sendNotification(
                             order.getBuyerId(),
-                            "ÄÆ¡n hÃ ng #" + order.getId().substring(0, 8).toUpperCase() + " Ä‘Ã£ thanh toÃ¡n thÃ nh cÃ´ng qua VNPay.",
+                            "Đơn hàng #" + order.getId().substring(0, 8).toUpperCase() + " đã thanh toán thành công qua VNPay.",
                             "ORDER_STATUS",
                             order.getOrderItems().isEmpty() ? null : order.getOrderItems().get(0).getItemId()
                         );
                     } catch (Exception ignored) {}
 
-                    // Gá»­i thÃ´ng bÃ¡o Ä‘áº¿n ngÆ°á»i bÃ¡n (cÃ¡c seller cá»§a tá»«ng item)
+                    // Gửi thông báo đến người bán (các seller của từng item)
                     try {
                         java.util.Set<String> sellerIds = new java.util.HashSet<>();
                         for (OrderItem item : order.getOrderItems()) {
@@ -176,7 +176,7 @@ public class PaymentController {
 
                             notificationClient.sendNotification(
                                 sellerId,
-                                "Sáº£n pháº©m thuá»™c Ä‘Æ¡n hÃ ng #" + order.getId().substring(0, 8).toUpperCase() + " cá»§a báº¡n Ä‘Ã£ Ä‘Æ°á»£c thanh toÃ¡n qua VNPay. Vui lÃ²ng kiá»ƒm tra vÃ  váº­n chuyá»ƒn Ä‘Ãºng háº¡n.",
+                                "Sản phẩm thuộc đơn hàng #" + order.getId().substring(0, 8).toUpperCase() + " của bạn đã được thanh toán qua VNPay. Vui lòng kiểm tra và vận chuyển đúng hạn.",
                                 "ORDER_CREATED",
                                 itemId
                             );
@@ -189,7 +189,7 @@ public class PaymentController {
                         .location(URI.create(successUrl))
                         .build();
             } else {
-                // Thanh toÃ¡n tháº¥t báº¡i hoáº·c bá»‹ há»§y tá»« phÃ­a khÃ¡ch hÃ ng
+                // Thanh toán thất bại hoặc bị hủy từ phía khách hàng
                 if (payment != null) {
                     LocalDateTime now = LocalDateTime.now();
                     payment.setStatus(PaymentStatus.FAILED);
@@ -233,5 +233,3 @@ public class PaymentController {
                 URLEncoder.encode(message == null ? "Unknown error" : message, StandardCharsets.UTF_8);
     }
 }
-
-

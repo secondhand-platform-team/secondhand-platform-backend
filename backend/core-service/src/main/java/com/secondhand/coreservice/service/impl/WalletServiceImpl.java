@@ -314,6 +314,13 @@ public class WalletServiceImpl implements WalletService {
         return transactionPage.map(this::mapToTransactionResponse);
     }
 
+    @Override
+    public Page<WalletTransactionResponse> getAllTransactionsForAdmin(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<WalletTransaction> transactionPage = walletTransactionRepository.findAll(pageable);
+        return transactionPage.map(this::mapToTransactionResponse);
+    }
+
     private WalletTransactionResponse mapToTransactionResponse(WalletTransaction tx) {
         return WalletTransactionResponse.builder()
                 .id(tx.getId())

@@ -55,7 +55,7 @@ public class PendingPaymentTimeoutScheduler {
                 LocalDateTime now = LocalDateTime.now();
                 order.setStatus(OrderStatus.CANCELLED);
                 order.setPaymentStatus(PaymentStatus.FAILED);
-                order.setCancelReason("Thanh toan VNPay qua han sau 15 phut");
+                order.setCancelReason("Thanh toán VNPay quá hạn 15 phút");
                 order.setUpdatedAt(now);
 
                 Payment payment = order.getPayment();

@@ -702,7 +702,7 @@ public class ItemServiceImpl implements ItemService {
         Item item = itemRepository.findByItemId(itemId)
                 .orElseThrow(() -> new ResourceNotFoundException("Item not found with id: " + itemId));
 
-        if (!item.getUserId().equals(currentUserId)) {
+        if (!item.getUserId().equals(currentUserId) && !isCurrentUserAdmin()) {
             throw new BadRequestException("You do not have permission to update this item status");
         }
 
@@ -1053,6 +1053,15 @@ public class ItemServiceImpl implements ItemService {
             return user.userId();
         }
         throw new BadRequestException("User not authenticated or invalid JWT token");
+    }
+
+    private boolean isCurrentUserAdmin() {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null) {
+            return authentication.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ADMIN"));
+        }
+        return false;
     }
 
     // ====================================================================

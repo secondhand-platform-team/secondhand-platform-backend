@@ -3,6 +3,7 @@ package com.secondhand.authservice.controller;
 import com.secondhand.authservice.dto.request.LoginRequest;
 import com.secondhand.authservice.dto.request.RegisterRequest;
 import com.secondhand.authservice.dto.request.UpdateProfileRequest;
+import com.secondhand.authservice.dto.request.ChangePasswordRequest;
 import com.secondhand.authservice.dto.response.AuthResponse;
 import com.secondhand.authservice.dto.response.LoginResponse;
 import com.secondhand.authservice.dto.response.MessageResponse;
@@ -275,6 +276,14 @@ public class AuthController {
             @RequestBody UpdateProfileRequest request) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return ResponseEntity.ok(authService.updateProfile(email, request));
+    }
+
+    @PutMapping("/password")
+    public ResponseEntity<MessageResponse> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        authService.changePassword(email, request);
+        return ResponseEntity.ok(MessageResponse.success("Đổi mật khẩu thành công"));
     }
 
     @PutMapping("/profile/avatar")

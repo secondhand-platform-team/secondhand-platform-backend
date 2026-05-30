@@ -3,6 +3,7 @@ package com.secondhand.authservice.service.impl;
 import com.secondhand.authservice.dto.request.LoginRequest;
 import com.secondhand.authservice.dto.request.RegisterRequest;
 import com.secondhand.authservice.dto.request.UpdateProfileRequest;
+import com.secondhand.authservice.dto.request.ChangePasswordRequest;
 import com.secondhand.authservice.dto.response.AuthResponse;
 import com.secondhand.authservice.dto.response.MessageResponse;
 import com.secondhand.authservice.dto.response.UserInfoResponse;
@@ -354,5 +355,17 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(user);
         return getCurrentUserProfile(user.getEmail());
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(String identifier, ChangePasswordRequest request) {
+        User user = userRepository.findByEmailOrPhoneNumber(identifier, identifier)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new BadRequestException("Mật khẩu hiện tại không đúng");
+        }
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 }
