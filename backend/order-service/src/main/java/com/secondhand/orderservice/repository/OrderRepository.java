@@ -22,6 +22,9 @@ public interface OrderRepository extends JpaRepository<Order, String> {
 
     List<Order> findByStatusOrderByUpdatedAtDesc(OrderStatus status);
 
+    @Query("SELECT o FROM Order o WHERE o.status = 'PENDING_PAYMENT' AND o.createdAt <= :before")
+    List<Order> findPendingPaymentOrdersBefore(@Param("before") LocalDateTime before);
+
     // Tìm orders cần giả lập IN_TRANSIT (HANDOVER_TO_SHIPPER quá X giây)
     @Query("SELECT o FROM Order o WHERE o.status = :status AND o.updatedAt <= :before")
     List<Order> findByStatusAndUpdatedAtBefore(

@@ -144,6 +144,25 @@ public class WalletServiceImpl implements WalletService {
             // Verify response code (00 = success)
             if (!"00".equals(request.getVnp_ResponseCode())) {
                 log.warn("VNPay callback with non-success response code: {}", request.getVnp_ResponseCode());
+
+                                List<WalletTransaction> transactions = walletTransactionRepository.findAll();
+                                WalletTransaction targetTx = transactions.stream()
+                                                .filter(tx -> tx.getReferenceId() != null &&
+                                                                tx.getReferenceId().contains(request.getVnp_TxnRef()))
+                                                .findFirst()
+                                                .orElse(null);
+
+                                if (targetTx != null && targetTx.getStatus() == WalletTransactionStatus.PENDING) {
+                                        targetTx.setStatus(WalletTransactionStatus.FAILED);
+                                        walletTransactionRepository.save(targetTx);
+
+                                        try {
+                                                paymentEventService.updatePaymentStatus(targetTx.getReferenceId(), "FAILED");
+                                                log.info("Payment status updated to FAILED for transactionId: {}", targetTx.getReferenceId());
+                                        } catch (Exception ex) {
+                                                log.warn("Failed to update payment status in order-service", ex);
+                                        }
+                                }
                 return;
             }
 
