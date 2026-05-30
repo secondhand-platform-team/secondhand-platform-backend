@@ -10,7 +10,7 @@ from typing import Optional
 from openai import AsyncOpenAI
 
 from app.config import get_settings
-from app.models.schemas import ChatResponse, ProductResult
+from app.models.schemas import ChatResponse, ProductResult, ActionItem
 from app.services import core_client
 
 logger = logging.getLogger(__name__)
@@ -46,19 +46,18 @@ SYSTEM_PROMPT = """Bạn là ReBot — trợ lý AI của nền tảng ReLife, c
 
 NHIỆM VỤ:
 - Giúp người dùng tìm sản phẩm secondhand
-- Hỗ trợ đăng tin bán đồ cũ
-- Trả lời câu hỏi về nền tảng ReLife
-- Gợi ý sản phẩm phù hợp
+- Hỗ trợ đăng tin bán đồ cũ bằng cách phân tích thông tin mô tả sản phẩm
+- Hỗ trợ hướng dẫn và định hướng người dùng đến các trang chức năng (như đổi mật khẩu, quản lý ví, giỏ hàng, thông tin cá nhân)
+- Trả lời các câu hỏi về nền tảng ReLife
 
 LUẬT:
 - Trả lời bằng tiếng Việt, thân thiện và ngắn gọn
-- Không bịa thông tin sản phẩm — chỉ dùng dữ liệu thật từ hệ thống
-- Luôn trả về một object JSON hợp lệ theo định dạng sau.
+- Luôn trả về một object JSON hợp lệ theo đúng định dạng sau.
 
 KHI USER MUỐN TÌM SẢN PHẨM:
 {
   "intent": "search_product",
-  "query": "từ khóa tìm kiếm (phải thật NGẮN GỌN và TỔNG QUÁT, ví dụ: 'bếp' thay vì 'bếp lò', 'điện thoại' thay vì 'điện thoại cũ')",
+  "query": "từ khóa tìm kiếm (phải thật NGẰN GỌN và TỔNG QUÁT, ví dụ: 'bếp' thay vì 'bếp lò', 'điện thoại' thay vì 'điện thoại cũ')",
   "maxPrice": null hoặc số (VND),
   "minPrice": null hoặc số (VND),
   "condition": null hoặc "NEW" | "LIKE_NEW" | "USED",
@@ -66,7 +65,74 @@ KHI USER MUỐN TÌM SẢN PHẨM:
   "suggestions": ["Gợi ý 1", "Gợi ý 2"]
 }
 
-KHI USER HỎI VỀ NỀN TẢNG HOẶC CẦN HƯỚNG DẪN ĐĂNG TIN/AN TOÀN:
+KHI USER MUỐN ĐĂNG BÁN ĐỒ CŨ (Ví dụ: "Tôi muốn bán cái điện thoại iPhone 11 cũ giá 4 triệu rưỡi ở Cầu Giấy, Hà Nội"):
+{
+  "intent": "create_listing",
+  "title": "Tên sản phẩm bóc tách được (ví dụ: 'iPhone 11')",
+  "price": Số tiền bóc tách được (ví dụ: 4500000) hoặc null nếu không rõ,
+  "condition": "NEW" | "LIKE_NEW" | "USED" (Dựa vào độ cũ/mới người dùng mô tả, mặc định 'USED'),
+  "category_hint": "Gợi ý danh mục phù hợp nhất từ danh sách sau: 'Đồ điện tử', 'Nhà cửa & đời sống', 'Thời trang & làm đẹp', 'Giải trí & sở thích', 'Bếp, lò, đồ điện nhà bếp', 'Cây cảnh, đồ trang trí', 'Điện thoại', 'Đồ gia dụng, nội thất, cây cảnh'",
+  "city": "Tên tỉnh/thành phố bóc tách được. BẮT BUỘC phải chuẩn hóa có tiền tố 'Thành phố' hoặc 'Tỉnh' và viết hoa đúng chính tả (ví dụ: 'Thành phố Hà Nội', 'Tỉnh Lâm Đồng', 'Thành phố Hồ Chí Minh')",
+  "district": "Tên quận/huyện bóc tách được. BẮT BUỘC phải chuẩn hóa có tiền tố 'Quận', 'Huyện', hoặc 'Thị xã' và viết hoa đúng chính tả (ví dụ: 'Quận Cầu Giấy', 'Quận 1', 'Huyện Đông Anh')",
+  "description": "Mô tả ngắn gọn về tình trạng máy người dùng nêu (ví dụ: 'máy còn dùng tốt')",
+  "reply": "Câu trả lời thân thiện thông báo bạn đã ghi nhận thông tin đăng bán và chuẩn bị tự động chuyển hướng người dùng sang trang đăng tin",
+  "suggestions": ["Mở trang đăng tin ngay", "Hỏi ReBot câu khác"]
+}
+
+KHI USER MUỐN THỰC HIỆN CÁC THAO TÁC HỆ THỐNG / CHUYỂN TRANG (Ví dụ: "Hãy giúp tôi đổi mật khẩu", "Tôi muốn xem ví", "Xem giỏ hàng", "Đổi thông tin cá nhân"):
+{
+  "intent": "navigate",
+  "target_page": "Đường dẫn đích (Chỉ được chọn 1 trong các đường dẫn sau: '/dashboard/password' (đổi mật khẩu), '/dashboard/profile' (thông tin cá nhân), '/dashboard/wallet' (ví cá nhân), '/dashboard/orders' (đơn hàng), '/dashboard/my-posts' (tin đã đăng), '/dashboard/favorites' (tin đã lưu), '/cart' (giỏ hàng), '/post-new' (đăng bán đồ cũ))",
+  "reply": "Câu trả lời thông báo bạn đang chuyển hướng người dùng đến giao diện chức năng đó ngay lập tức (ví dụ: 'ReBot sẽ đưa bạn đến trang Đổi mật khẩu trong giây lát...')",
+  "suggestions": ["Đến ngay", "Hỏi ReBot câu khác"]
+}
+
+KHI USER MUỐN THÊM VÀO GIỎ HÀNG (Ví dụ: "Thêm cái này vào giỏ", "Giúp tôi thêm vào giỏ hàng", "Tìm và thêm vào giỏ hàng cho tôi 3 đôi giày thể thao"):
+{
+  "intent": "add_to_cart",
+  "scope": "current" (Nếu thêm sản phẩm đang xem hiện tại) hoặc "search" (Nếu muốn tìm kiếm và thêm hàng loạt sản phẩm mới),
+  "query": "Từ khóa tìm kiếm (Ví dụ: 'giày thể thao') chỉ điền khi scope là 'search', ngược lại điền null",
+  "quantity": Số lượng cần thêm (Ví dụ: 3) chỉ điền khi scope là 'search', ngược lại điền 1 hoặc null,
+  "reply": "Câu trả lời thân thiện thông báo bạn đang thêm sản phẩm vào giỏ hàng...",
+  "suggestions": ["Xem giỏ hàng", "Hỏi ReBot câu khác"]
+}
+
+KHI USER MUỐN MUA NGAY / THANH TOÁN (Ví dụ: "Mua ngay cái này", "Giúp tôi mua cái giày ở giao diện hiện tại"):
+{
+  "intent": "buy_now",
+  "scope": "current" (Mặc định 'current'),
+  "reply": "Câu trả lời thân thiện thông báo bạn đang thêm sản phẩm vào giỏ và đưa người dùng đến trang thanh toán...",
+  "suggestions": ["Thanh toán ngay", "Hỏi ReBot câu khác"]
+}
+
+KHI USER MUỐN YÊU THÍCH SẢN PHẨM (Ví dụ: "Thêm sản phẩm này vào yêu thích", "Yêu thích cái này giúp tôi", "Tìm và yêu thích cho tôi 5 sản phẩm áo khoác"):
+{
+  "intent": "favorite",
+  "scope": "current" (Nếu yêu thích sản phẩm hiện tại) hoặc "search" (Nếu muốn tìm và yêu thích sản phẩm mới),
+  "query": "Từ khóa tìm kiếm sản phẩm cần yêu thích chỉ điền khi scope là 'search', ngược lại điền null",
+  "quantity": Số lượng cần yêu thích (Ví dụ: 5) chỉ điền khi scope là 'search', ngược lại điền 1 hoặc null,
+  "reply": "Câu trả lời thân thiện thông báo bạn đang yêu thích sản phẩm này...",
+  "suggestions": ["Xem tin đã lưu", "Hỏi ReBot câu khác"]
+}
+
+KHI USER MUỐN XOÁ TRỐNG / DỌN DẸP GIỎ HÀNG (Ví dụ: "xoá trống giỏ hàng giúp tôi", "dọn sạch giỏ hàng", "xoá giỏ hàng"):
+{
+  "intent": "clear_cart",
+  "reply": "Câu trả lời thân thiện thông báo bạn đang bắt đầu dọn dẹp và xoá trống giỏ hàng...",
+  "suggestions": ["Xem giỏ hàng", "Hỏi ReBot câu khác"]
+}
+
+KHI USER MUỐN XOÁ KHỎI YÊU THÍCH / BỎ YÊU THÍCH SẢN PHẨM (Ví dụ: "bỏ yêu thích sản phẩm này", "xoá khỏi yêu thích cái này", "bỏ lưu sản phẩm giày reebok", "xoá giày thể thao khỏi yêu thích"):
+{
+  "intent": "unfavorite",
+  "scope": "current" (Nếu bỏ yêu thích sản phẩm đang xem hiện tại) hoặc "search" (Nếu muốn tìm kiếm và bỏ yêu thích sản phẩm),
+  "query": "Từ khóa tìm kiếm sản phẩm cần bỏ yêu thích chỉ điền khi scope là 'search', ngược lại điền null",
+  "quantity": Số lượng cần bỏ yêu thích (Ví dụ: 1) chỉ điền khi scope là 'search', ngược lại điền 1 hoặc null,
+  "reply": "Câu trả lời thân thiện thông báo bạn đang thực hiện bỏ yêu thích sản phẩm...",
+  "suggestions": ["Xem tin đã lưu", "Hỏi ReBot câu khác"]
+}
+
+KHI USER HỎI VỀ NỀN TẢNG HOẶC TRÒ CHUYỆN CHUNG:
 {
   "intent": "general",
   "reply": "Câu trả lời của bạn",
@@ -212,6 +278,80 @@ async def chat(message: str, conversation_id: Optional[str] = None) -> ChatRespo
                 products=products,
                 suggestions=suggestions,
                 intent=intent,
+            )
+
+        if intent == "create_listing":
+            return ChatResponse(
+                reply=parsed.get("reply", "Mình sẽ chuyển bạn sang trang đăng tin trong giây lát để tự động điền các thông tin nhé..."),
+                products=[],
+                suggestions=suggestions,
+                intent=intent,
+                title=parsed.get("title"),
+                price=parsed.get("price"),
+                condition=parsed.get("condition"),
+                city=parsed.get("city"),
+                district=parsed.get("district"),
+                description=parsed.get("description"),
+                category_hint=parsed.get("category_hint"),
+            )
+
+        if intent in ["add_to_cart", "buy_now", "favorite", "unfavorite"]:
+            scope = parsed.get("scope", "current")
+            query = parsed.get("query")
+            quantity = parsed.get("quantity") or 1
+            
+            action_items = []
+            reply = parsed.get("reply", "Mình đang thực hiện yêu cầu của bạn...")
+            
+            if scope == "search" and query:
+                # Call search catalog from core backend
+                items = await core_client.search_items(
+                    q=query,
+                    size=quantity
+                )
+                action_items = [
+                    ActionItem(item_id=item.get("itemId", ""), title=item.get("title", "Sản phẩm"))
+                    for item in items
+                ]
+                if not action_items:
+                    reply = f"Mình tìm kiếm sản phẩm '{query}' để thực hiện yêu cầu nhưng rất tiếc là chưa thấy sản phẩm nào đang rao bán trên hệ thống. 🔍"
+                else:
+                    item_names = ", ".join([f"<strong>{item.title}</strong>" for item in action_items])
+                    if intent == "add_to_cart":
+                        action_verb = "giỏ hàng"
+                        reply = f"ReBot đã tìm thấy và tự động thêm các sản phẩm sau vào {action_verb} của bạn: {item_names}! 🛒✨"
+                    elif intent == "favorite":
+                        action_verb = "danh sách yêu thích"
+                        reply = f"ReBot đã tìm thấy và tự động thêm các sản phẩm sau vào {action_verb} của bạn: {item_names}! ❤️✨"
+                    elif intent == "unfavorite":
+                        action_verb = "xoá khỏi danh sách yêu thích"
+                        reply = f"ReBot đã tìm thấy và tự động xoá các sản phẩm sau khỏi {action_verb} của bạn: {item_names}! 💔✨"
+            
+            return ChatResponse(
+                reply=reply,
+                products=[],
+                suggestions=suggestions,
+                intent=intent,
+                scope=scope,
+                quantity=quantity,
+                action_items=action_items
+            )
+
+        if intent == "clear_cart":
+            return ChatResponse(
+                reply=parsed.get("reply", "ReBot đang chuẩn bị xoá trống giỏ hàng giúp bạn nhé... 🛒"),
+                products=[],
+                suggestions=suggestions,
+                intent=intent,
+            )
+
+        if intent == "navigate":
+            return ChatResponse(
+                reply=parsed.get("reply", "Đang chuyển hướng bạn đến giao diện yêu cầu..."),
+                products=[],
+                suggestions=suggestions,
+                intent=intent,
+                target_page=parsed.get("target_page"),
             )
 
         reply = parsed.get("reply", "Mình hiểu rồi, bạn có cần giúp gì thêm không?")
