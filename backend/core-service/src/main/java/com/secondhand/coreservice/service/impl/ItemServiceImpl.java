@@ -25,6 +25,7 @@ import com.secondhand.coreservice.client.UserServiceClient;
 import com.secondhand.coreservice.dto.request.ItemAttributeRequest;
 import com.secondhand.coreservice.dto.request.ItemImageRequest;
 import com.secondhand.coreservice.dto.request.ItemRequest;
+import com.secondhand.coreservice.dto.request.RenewRequest;
 import com.secondhand.coreservice.dto.request.VNPayCallbackRequest;
 import com.secondhand.coreservice.dto.response.ItemAttributeResponse;
 import com.secondhand.coreservice.dto.response.ItemImageResponse;
@@ -83,6 +84,13 @@ public class ItemServiceImpl implements ItemService {
 
     @Value("${app.payment.item-callback-url}")
     private String itemCallbackUrl;
+
+    @Value("${app.payment.item-renew-callback-url}")
+    private String itemRenewCallbackUrl;
+
+    // Thời hạn tin đăng
+    private static final int FREE_LISTING_DAYS = 5;   // FREE_SELL / GIVE_AWAY
+    private static final int PAID_LISTING_DAYS = 15;  // SELL (tính phí)
 
     @Override
     @CacheEvict(cacheNames = {"itemsAll", "itemsByCategory", "itemsByCategorySlug", "itemsFeatured"}, allEntries = true)
@@ -229,6 +237,12 @@ public class ItemServiceImpl implements ItemService {
         // SELL: DRAFT (waiting for payment)
         ItemStatus initialStatus = (isGiveAway || isFreeSell) ? ItemStatus.ACTIVE : ItemStatus.DRAFT;
 
+        // Set expiredAt cho tin miễn phí ngay khi tạo (ACTIVE luôn)
+        LocalDateTime expiredAt = null;
+        if (isGiveAway || isFreeSell) {
+            expiredAt = LocalDateTime.now().plusDays(FREE_LISTING_DAYS);
+        }
+
         // Create item
         Item item = Item.builder()
                 .title(request.getTitle())
@@ -241,6 +255,7 @@ public class ItemServiceImpl implements ItemService {
                                 : null)
                 .status(initialStatus)
                 .userId(userId)
+                .expiredAt(expiredAt)
                 .paymentInitiatedAt((isSell) ? LocalDateTime.now() : null)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -330,6 +345,7 @@ public class ItemServiceImpl implements ItemService {
                     // Cập nhật trạng thái item thành ACTIVE vì đã thanh toán thành công bằng ví
                     savedItem.setStatus(ItemStatus.ACTIVE);
                     savedItem.setTransactionId("WALLET-" + System.currentTimeMillis());
+                    savedItem.setExpiredAt(LocalDateTime.now().plusDays(PAID_LISTING_DAYS));
                     savedItem.setUpdatedAt(LocalDateTime.now());
                     itemRepository.save(savedItem);
                     log.info("Wallet payment successful, item {} is now ACTIVE", savedItem.getItemId());
@@ -389,7 +405,7 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public ItemResponse getItemById(String itemId) {
         Item item = itemRepository.findByItemId(itemId)
                 .orElseThrow(() -> new ResourceNotFoundException("Item not found with id: " + itemId));
@@ -398,6 +414,9 @@ public class ItemServiceImpl implements ItemService {
         if (item.getDeletedAt() != null) {
             throw new ResourceNotFoundException("Item not found with id: " + itemId);
         }
+        
+        // Read-repair: Cập nhật DB ngay lập tức nếu phát hiện hết hạn (thay vì đợi scheduler)
+        readRepairExpiredItems(Arrays.asList(item));
 
         return mapToItemResponse(item);
     }
@@ -423,21 +442,29 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<ItemResponse> getMyItems() {
         String currentUserId = getCurrentUserId();
         List<Item> items = itemRepository.findByUserId(currentUserId);
+        
+        // Read-repair
+        readRepairExpiredItems(items);
+        
         return items.stream()
                 .map(this::mapToItemResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public Page<ItemResponse> getMyItemsPaginated(int page, int size) {
         String currentUserId = getCurrentUserId();
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<Item> items = itemRepository.findByUserId(currentUserId, pageable);
+        
+        // Read-repair
+        readRepairExpiredItems(items.getContent());
+        
         return items.map(this::mapToItemResponse);
     }
 
@@ -583,9 +610,13 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<ItemResponse> getItemsByUser(String userId) {
         List<Item> items = itemRepository.findByUserId(userId);
+        
+        // Read-repair
+        readRepairExpiredItems(items);
+        
         return items.stream()
                 .map(this::mapToItemResponse)
                 .collect(Collectors.toList());
@@ -886,6 +917,32 @@ public class ItemServiceImpl implements ItemService {
                 .build();
     }
 
+    /**
+     * Read-Repair Pattern: Nếu người dùng truy cập vào item đã hết hạn (nhưng scheduler chưa chạy),
+     * thì ta tự động đổi trạng thái sang HIDDEN và lưu xuống DB ngay lập tức.
+     */
+    private void readRepairExpiredItems(List<Item> items) {
+        if (items == null || items.isEmpty()) return;
+        
+        boolean needSave = false;
+        LocalDateTime now = LocalDateTime.now();
+        for (Item item : items) {
+            if (item.getStatus() == ItemStatus.ACTIVE 
+                && item.getExpiredAt() != null 
+                && item.getExpiredAt().isBefore(now)) {
+                
+                item.setStatus(ItemStatus.HIDDEN);
+                item.setUpdatedAt(now);
+                needSave = true;
+                log.info("[Read-Repair] Đã tự động đổi trạng thái item {} sang HIDDEN vì đã quá hạn", item.getItemId());
+            }
+        }
+        
+        if (needSave) {
+            itemRepository.saveAll(items);
+        }
+    }
+
     private ItemResponse mapToItemResponse(Item item) {
         LocationResponse locationResponse = null;
         if (item.getItemLocation() != null) {
@@ -923,6 +980,15 @@ public class ItemServiceImpl implements ItemService {
             // Not authenticated or error getting user id
         }
 
+        // Tính toán trạng thái thực tế hiển thị: 
+        // Nếu DB là ACTIVE nhưng đã quá hạn -> ép FE hiển thị là HIDDEN ngay lập tức.
+        String displayStatus = item.getStatus() != null ? item.getStatus().name() : null;
+        if (item.getStatus() == ItemStatus.ACTIVE 
+            && item.getExpiredAt() != null 
+            && item.getExpiredAt().isBefore(LocalDateTime.now())) {
+            displayStatus = ItemStatus.HIDDEN.name();
+        }
+
         return ItemResponse.builder()
                 .itemId(item.getItemId())
                 .title(item.getTitle())
@@ -931,11 +997,12 @@ public class ItemServiceImpl implements ItemService {
                 .price(item.getPrice())
                 .condition(item.getCondition() != null ? item.getCondition().name() : null)
                 .transactionType(item.getTransactionType() != null ? item.getTransactionType().name() : null)
-                .status(item.getStatus() != null ? item.getStatus().name() : null)
+                .status(displayStatus)
                 .location(locationResponse)
                 .userId(item.getUserId())
                 .createdAt(item.getCreatedAt())
                 .updatedAt(item.getUpdatedAt())
+                .expiredAt(item.getExpiredAt())
                 .itemImageList(imageResponses)
                 .attributes(attributeResponses)
                 .transactionId(item.getTransactionId())
@@ -1017,6 +1084,7 @@ public class ItemServiceImpl implements ItemService {
 
             // Update item status from DRAFT to ACTIVE
             targetItem.setStatus(ItemStatus.ACTIVE);
+            targetItem.setExpiredAt(LocalDateTime.now().plusDays(PAID_LISTING_DAYS));
             targetItem.setUpdatedAt(LocalDateTime.now());
             itemRepository.save(targetItem);
 
@@ -1085,6 +1153,218 @@ public class ItemServiceImpl implements ItemService {
     // Internal: Reserve item (atomic, SELECT FOR UPDATE)
     // Race Condition Prevention — chỉ 1 buyer có thể reserve item tại 1 thời điểm
     // ====================================================================
+
+    // ====================================================================
+    // Gia hạn tin đăng đã hết hạn
+    // ====================================================================
+
+    private ItemResponse processFreeRenewal(Item item, String currentUserId, String itemId) {
+        item.setExpiredAt(LocalDateTime.now().plusDays(FREE_LISTING_DAYS));
+        item.setStatus(ItemStatus.ACTIVE);
+        item.setUpdatedAt(LocalDateTime.now());
+        Item saved = itemRepository.save(item);
+        log.info("[Renew] Gia hạn miễn phí {} thêm {} ngày", itemId, FREE_LISTING_DAYS);
+        notificationService.createAndSendNotification(
+                currentUserId,
+                "Tin đăng \"" + item.getTitle() + "\" đã được gia hạn. Hạn mới: "
+                        + saved.getExpiredAt().toLocalDate(),
+                com.secondhand.coreservice.model.enums.NotificationType.SYSTEM, itemId);
+        return mapToItemResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(cacheNames = {"itemsAll", "itemsByCategory", "itemsByCategorySlug", "itemsFeatured"}, allEntries = true)
+    public ItemResponse renewItem(String itemId, RenewRequest request) {
+        String currentUserId = getCurrentUserId();
+
+        Item item = itemRepository.findByItemId(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Item not found with id: " + itemId));
+
+        // Chỉ chủ tin mới được gia hạn
+        if (!item.getUserId().equals(currentUserId)) {
+            throw new BadRequestException("Bạn không có quyền gia hạn tin đăng này");
+        }
+
+        // Chỉ gia hạn được khi tin đang HIDDEN
+        if (item.getStatus() != ItemStatus.HIDDEN) {
+            throw new BadRequestException(
+                    "Chỉ có thể gia hạn tin đăng đang bị ẩn do hết hạn (trạng thái: " + item.getStatus() + ")");
+        }
+
+        TransactionType txType = item.getTransactionType();
+        boolean isPaidListing = txType == TransactionType.SELL;
+
+        // Xử lý riêng cho tin GIVE_AWAY: luôn miễn phí, không tốn lượt
+        if (txType == TransactionType.GIVE_AWAY) {
+            return processFreeRenewal(item, currentUserId, itemId);
+        }
+
+        // Xử lý cho tin FREE_SELL: phải kiểm tra còn lượt miễn phí không
+        if (txType == TransactionType.FREE_SELL) {
+            int freeSellAvailable = 0;
+            try {
+                freeSellAvailable = userServiceClient.getFreeSellUsed(currentUserId);
+            } catch (Exception e) {
+                log.error("[Renew] Lỗi khi lấy số lượt miễn phí của user {}", currentUserId, e);
+            }
+
+            if (freeSellAvailable > 0) {
+                try {
+                    userServiceClient.decrementFreeSellUse(currentUserId);
+                } catch (Exception e) {
+                    throw new BadRequestException("Lỗi hệ thống khi trừ lượt đăng miễn phí.");
+                }
+                log.info("[Renew] User {} dùng 1 lượt miễn phí (còn {}) để gia hạn item {}", currentUserId, freeSellAvailable - 1, itemId);
+                return processFreeRenewal(item, currentUserId, itemId);
+            } else {
+                // Đã hết lượt miễn phí! Yêu cầu thanh toán.
+                String requestedPayment = (request != null) ? request.getPaymentMethod() : null;
+                if (requestedPayment == null || requestedPayment.isBlank()) {
+                    throw new BadRequestException("Bạn đã hết lượt đăng miễn phí. Vui lòng chọn phương thức thanh toán (Ví hoặc VNPay) để tiếp tục gia hạn.");
+                }
+                
+                // Nếu có chọn thanh toán, tự động nâng cấp tin này thành tin SELL (tính phí)
+                item.setTransactionType(TransactionType.SELL);
+                isPaidListing = true;
+                log.info("[Renew] Nâng cấp item {} từ FREE_SELL -> SELL do hết lượt miễn phí", itemId);
+            }
+        }
+
+        // Lúc này, nếu isPaidListing = false thì chỉ có thể là code logic sai, nhưng ta đã handle hết.
+        // Đoạn dưới đây dành cho isPaidListing = true (hoặc SELL gốc, hoặc FREE_SELL bị nâng cấp lên SELL)
+
+        // SELL: xác định phương thức thanh toán
+        BigDecimal renewalFee = BigDecimal.valueOf(item.getCategory().getPostingFee());
+        String paymentMethod = (request != null && request.getPaymentMethod() != null)
+                ? request.getPaymentMethod().toUpperCase() : "WALLET";
+
+        if ("WALLET".equals(paymentMethod)) {
+            // ── Phương thức 1: Trừ phí từ ví ───────────────────────────────────────
+            try {
+                log.info("[Renew] Trừ phí gia hạn {} từ ví user {}", renewalFee, currentUserId);
+                walletService.deductFee(currentUserId, renewalFee,
+                        "Phí gia hạn tin đăng " + item.getItemId());
+            } catch (Exception e) {
+                log.error("[Renew] Trừ phí ví thất bại: {}", e.getMessage());
+                throw new BadRequestException(
+                        "Gia hạn bằng ví thất bại (có thể số dư không đủ): " + e.getMessage());
+            }
+            item.setExpiredAt(LocalDateTime.now().plusDays(PAID_LISTING_DAYS));
+            item.setStatus(ItemStatus.ACTIVE);
+            item.setUpdatedAt(LocalDateTime.now());
+            Item saved = itemRepository.save(item);
+            log.info("[Renew] Gia hạn SELL (WALLET) {} thêm {} ngày", itemId, PAID_LISTING_DAYS);
+            notificationService.createAndSendNotification(
+                    currentUserId,
+                    "Tin đăng \"" + item.getTitle() + "\" đã được gia hạn. Hạn mới: "
+                            + saved.getExpiredAt().toLocalDate(),
+                    com.secondhand.coreservice.model.enums.NotificationType.SYSTEM, itemId);
+            return mapToItemResponse(saved);
+
+        } else if ("VNPAY".equals(paymentMethod)) {
+            // ── Phương thức 2: Tạo link VNPay ───────────────────────────────────────
+            // Item vẫn giữ HIDDEN, chỉ được ACTIVE sau khi VNPay callback thành công.
+            try {
+                log.info("[Renew] Tạo link VNPay gia hạn cho item {} user {}", itemId, currentUserId);
+                PaymentCreateResult paymentResponse = paymentEventService.createVnPayPayment(
+                        renewalFee.longValue(),
+                        "NCB",
+                        "vn",
+                        currentUserId,
+                        itemRenewCallbackUrl);
+
+                if (!"00".equals(paymentResponse.code())) {
+                    throw new BadRequestException(
+                            "Tạo link thanh toán VNPay thất bại: " + paymentResponse.message());
+                }
+
+                // Lưu transactionId với prefix RENEW- để phân biệt khi callback
+                item.setTransactionId("RENEW-" + paymentResponse.transactionId());
+                item.setPaymentUrl(paymentResponse.paymentUrl());
+                item.setPaymentInitiatedAt(LocalDateTime.now());
+                item.setUpdatedAt(LocalDateTime.now());
+                itemRepository.save(item);
+
+                log.info("[Renew] VNPay payment created - TransactionId: RENEW-{}",
+                        paymentResponse.transactionId());
+                return mapToItemResponse(item); // trả về paymentUrl để frontend redirect
+
+            } catch (BadRequestException e) {
+                throw e;
+            } catch (Exception e) {
+                log.error("[Renew] Lỗi tạo VNPay payment: {}", e.getMessage(), e);
+                throw new BadRequestException("Tạo link thanh toán thất bại: " + e.getMessage());
+            }
+        } else {
+            throw new BadRequestException(
+                    "Phương thức thanh toán không hợp lệ: " + paymentMethod + ". Dùng WALLET hoặc VNPAY.");
+        }
+    }
+
+    // ====================================================================
+    // VNPay callback cho gia hạn tin đăng
+    // ====================================================================
+
+    @Override
+    @Transactional
+    @CacheEvict(cacheNames = {"itemsAll", "itemsByCategory", "itemsByCategorySlug", "itemsFeatured"}, allEntries = true)
+    public void handleRenewVNPayCallback(VNPayCallbackRequest request) {
+        try {
+            log.info("[RenewCallback] VNPay callback - TxnRef: {}, ResponseCode: {}",
+                    request.getVnp_TxnRef(), request.getVnp_ResponseCode());
+
+            if (!"00".equals(request.getVnp_ResponseCode())) {
+                log.warn("[RenewCallback] Thanh toán không thành công, ResponseCode: {}",
+                        request.getVnp_ResponseCode());
+                return;
+            }
+
+            // Tìm item theo transactionId chứa prefix RENEW- + TxnRef
+            String renewTxnRef = "RENEW-" + request.getVnp_TxnRef();
+            Item targetItem = itemRepository.findAll().stream()
+                    .filter(i -> renewTxnRef.equals(i.getTransactionId())
+                            || (i.getTransactionId() != null
+                                && i.getTransactionId().contains(request.getVnp_TxnRef())
+                                && i.getTransactionId().startsWith("RENEW-")))
+                    .findFirst()
+                    .orElse(null);
+
+            if (targetItem == null) {
+                log.warn("[RenewCallback] Không tìm thấy item cần gia hạn với TxnRef: {}",
+                        request.getVnp_TxnRef());
+                return;
+            }
+
+            // Kích hoạt lại item và reset expiredAt
+            targetItem.setStatus(ItemStatus.ACTIVE);
+            targetItem.setExpiredAt(LocalDateTime.now().plusDays(PAID_LISTING_DAYS));
+            targetItem.setUpdatedAt(LocalDateTime.now());
+            itemRepository.save(targetItem);
+
+            log.info("[RenewCallback] Gia hạn thành công item {} (VNPay), expiredAt={}",
+                    targetItem.getItemId(), targetItem.getExpiredAt());
+
+            // Cập nhật trạng thái payment trong order-service
+            try {
+                paymentEventService.updatePaymentStatus(targetItem.getTransactionId(), "PAID");
+            } catch (Exception ex) {
+                log.warn("[RenewCallback] Không cập nhật được payment status: {}", ex.getMessage());
+            }
+
+            // Gửi thông báo gia hạn thành công
+            notificationService.createAndSendNotification(
+                    targetItem.getUserId(),
+                    "Tin đăng \"" + targetItem.getTitle() + "\" đã được gia hạn thành công. Hạn mới: "
+                            + targetItem.getExpiredAt().toLocalDate(),
+                    com.secondhand.coreservice.model.enums.NotificationType.SYSTEM,
+                    targetItem.getItemId());
+
+        } catch (Exception e) {
+            log.error("[RenewCallback] Lỗi xử lý callback gia hạn", e);
+            throw new RuntimeException("Failed to process renewal callback: " + e.getMessage(), e);
+        }
+    }
 
     @Override
     @Transactional

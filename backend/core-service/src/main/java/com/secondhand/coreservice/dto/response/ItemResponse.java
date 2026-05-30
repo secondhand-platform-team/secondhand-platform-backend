@@ -26,6 +26,7 @@ public class ItemResponse {
     private String userId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime expiredAt;
     private List<ItemImageResponse> itemImageList;
     private List<ItemAttributeResponse> attributes;
     private String transactionId;

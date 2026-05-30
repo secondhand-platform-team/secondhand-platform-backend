@@ -80,6 +80,11 @@ public class Item {
 
     private LocalDateTime deletedAt;
 
+    // Thời điểm tin đăng hết hạn:
+    // - FREE_SELL / GIVE_AWAY: createdAt + 5 ngày
+    // - SELL (tính phí): activatedAt + 15 ngày
+    private LocalDateTime expiredAt;
+
     private String userId;
 
     // Reservation tracking — Race Condition Prevention
