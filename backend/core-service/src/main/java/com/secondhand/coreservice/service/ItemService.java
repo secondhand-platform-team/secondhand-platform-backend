@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.secondhand.coreservice.dto.request.ItemRequest;
+import com.secondhand.coreservice.dto.request.RenewRequest;
 import com.secondhand.coreservice.dto.request.VNPayCallbackRequest;
 import com.secondhand.coreservice.dto.response.ItemResponse;
 import com.secondhand.coreservice.dto.response.MessageResponse;
@@ -69,4 +70,18 @@ public interface ItemService {
 
     /** Internal: reserve item (atomic, SELECT FOR UPDATE) — Race Condition prevention */
     ItemResponse reserveItem(String itemId, String buyerId);
+
+    /**
+     * Gia hạn tin đăng đã hết hạn (status = HIDDEN do hết expiredAt).
+     * - FREE_SELL / GIVE_AWAY: miễn phí, expiredAt += 5 ngày
+     * - SELL + WALLET : trừ phí ví, expiredAt += 15 ngày, status = ACTIVE
+     * - SELL + VNPAY  : tạo link thanh toán, trả về paymentUrl (item vẫn HIDDEN cho đến callback)
+     */
+    ItemResponse renewItem(String itemId, RenewRequest request);
+
+    /**
+     * Xử lý VNPay callback sau khi gia hạn bằng VNPay.
+     * Khi VNPay trả kết quả → kích hoạt lại item và reset expiredAt.
+     */
+    void handleRenewVNPayCallback(VNPayCallbackRequest request);
 }

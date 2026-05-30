@@ -24,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.secondhand.coreservice.dto.request.ItemRequest;
 import com.secondhand.coreservice.dto.request.ItemStatusUpdateRequest;
+import com.secondhand.coreservice.dto.request.RenewRequest;
 import com.secondhand.coreservice.dto.request.VNPayCallbackRequest;
 import com.secondhand.coreservice.dto.response.ItemResponse;
 import com.secondhand.coreservice.dto.response.MessageResponse;
@@ -205,6 +206,75 @@ public class ItemController {
     public ResponseEntity<List<ItemResponse>> getMyFavoriteItems() {
         List<ItemResponse> items = itemService.getMyFavoriteItems();
         return ResponseEntity.ok(items);
+    }
+
+    /**
+     * Gia hạn tin đăng đã hết hạn (status = HIDDEN do hết expiredAt).
+     *
+     * Request body (JSON):
+     *   { "paymentMethod": "WALLET" }   → trừ tiền ví, kích hoạt ngay
+     *   { "paymentMethod": "VNPAY"  }   → trả về paymentUrl, item vẫn HIDDEN
+     *
+     * FREE_SELL / GIVE_AWAY: luôn miễn phí (bỏ qua paymentMethod)
+     */
+    @PostMapping("/{itemId}/renew")
+    public ResponseEntity<ItemResponse> renewItem(
+            @PathVariable String itemId,
+            @RequestBody(required = false) RenewRequest request) {
+        ItemResponse response = itemService.renewItem(itemId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * VNPay callback sau khi gia hạn tin đăng thành công.
+     * VNPay sẽ redirect về URL này với các query params của kết quả thanh toán.
+     */
+    @GetMapping("/payment-renew-callback")
+    public ResponseEntity<?> handleRenewVNPayCallback(
+            @RequestParam(required = false) String vnp_Amount,
+            @RequestParam(required = false) String vnp_BankCode,
+            @RequestParam(required = false) String vnp_BankTranNo,
+            @RequestParam(required = false) String vnp_CardType,
+            @RequestParam(required = false) String vnp_OrderInfo,
+            @RequestParam(required = false) String vnp_PayDate,
+            @RequestParam(required = false) String vnp_ResponseCode,
+            @RequestParam(required = false) String vnp_TmnCode,
+            @RequestParam(required = false) String vnp_TransactionNo,
+            @RequestParam(required = false) String vnp_TransactionStatus,
+            @RequestParam(required = false) String vnp_TxnRef,
+            @RequestParam(required = false) String vnp_SecureHash) {
+        try {
+            VNPayCallbackRequest request = VNPayCallbackRequest.builder()
+                    .vnp_Amount(vnp_Amount)
+                    .vnp_BankCode(vnp_BankCode)
+                    .vnp_BankTranNo(vnp_BankTranNo)
+                    .vnp_CardType(vnp_CardType)
+                    .vnp_OrderInfo(vnp_OrderInfo)
+                    .vnp_PayDate(vnp_PayDate)
+                    .vnp_ResponseCode(vnp_ResponseCode)
+                    .vnp_TmnCode(vnp_TmnCode)
+                    .vnp_TransactionNo(vnp_TransactionNo)
+                    .vnp_TransactionStatus(vnp_TransactionStatus)
+                    .vnp_TxnRef(vnp_TxnRef)
+                    .vnp_SecureHash(vnp_SecureHash)
+                    .build();
+
+            itemService.handleRenewVNPayCallback(request);
+
+            // Redirect về trang thành công của frontend
+            String successUrl = frontendBaseUrl
+                    + "/renew-success?status=success&transactionId=" + vnp_TransactionNo;
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(successUrl))
+                    .build();
+        } catch (Exception e) {
+            String errorUrl = frontendBaseUrl
+                    + "/renew-failed?status=error&message="
+                    + java.net.URLEncoder.encode(e.getMessage(), java.nio.charset.StandardCharsets.UTF_8);
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(errorUrl))
+                    .build();
+        }
     }
 
     @GetMapping("/payment-callback")
