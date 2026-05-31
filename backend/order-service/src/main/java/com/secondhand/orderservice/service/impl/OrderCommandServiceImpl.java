@@ -109,13 +109,8 @@ public class OrderCommandServiceImpl implements OrderCommandService {
 
             if (isVnPay) {
                 com.secondhand.orderservice.dto.response.PaymentResponse payRes =
-                    paymentService.createVnPayPaymentInternal((long) price, null, "vn", buyerId, null);
+                    paymentService.createVnPayPaymentInternal((long) price, null, "vn", buyerId, null, savedOrder.getId());
                 savedOrder.setPaymentUrl(payRes.getPaymentUrl());
-
-                paymentRepository.findByTransactionId(payRes.getTransactionId()).ifPresent(payment -> {
-                    payment.setOrder(savedOrder);
-                    paymentRepository.save(payment);
-                });
 
                 log.info("VNPay order {} created with PENDING_PAYMENT status for buyer={}", orderId, buyerId);
                 return savedOrder;

@@ -11,7 +11,7 @@ import org.springframework.data.domain.Pageable;
 public interface PaymentService {
     PaymentResponse createVnPayPayment(CreatePaymentRequest request, HttpServletRequest httpRequest);
 
-    PaymentResponse createVnPayPaymentInternal(Long amount, String bankCode, String language, String userId, String returnUrl);
+    PaymentResponse createVnPayPaymentInternal(Long amount, String bankCode, String language, String userId, String returnUrl, String orderId);
 
     String handleVnPayReturn(HttpServletRequest request);
 

@@ -145,7 +145,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public PaymentResponse createVnPayPaymentInternal(Long amount, String bankCode, String language, String userId, String customReturnUrl) {
+    public PaymentResponse createVnPayPaymentInternal(Long amount, String bankCode, String language, String userId, String customReturnUrl, String orderId) {
         CreatePaymentRequest request = new CreatePaymentRequest();
         request.setAmount(amount);
         request.setBankCode(bankCode);
@@ -217,6 +217,11 @@ public class PaymentServiceImpl implements PaymentService {
             payment.setMethod(PaymentMethod.VNPAY);
             payment.setStatus(PaymentStatus.PENDING);
             payment.setCreatedAt(LocalDateTime.now());
+            if (orderId != null && !orderId.trim().isEmpty()) {
+                com.secondhand.orderservice.model.Order orderRef = new com.secondhand.orderservice.model.Order();
+                orderRef.setId(orderId);
+                payment.setOrder(orderRef);
+            }
             paymentRepository.save(payment);
 
             return new PaymentResponse("00", "success", paymentUrl, transactionId);

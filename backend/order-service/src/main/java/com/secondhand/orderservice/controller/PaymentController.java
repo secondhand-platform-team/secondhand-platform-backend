@@ -103,7 +103,7 @@ public class PaymentController {
                 List<Payment> payments = paymentRepository.findAll();
                 payment = payments.stream()
                         .filter(p -> p.getTransactionId() != null && p.getTransactionId().contains(vnp_TxnRef))
-                        .findFirst()
+                        .max(java.util.Comparator.comparing(Payment::getCreatedAt, java.util.Comparator.nullsFirst(java.util.Comparator.naturalOrder())))
                         .orElse(null);
             }
 

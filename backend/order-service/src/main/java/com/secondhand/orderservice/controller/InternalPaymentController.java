@@ -29,7 +29,7 @@ public class InternalPaymentController {
     public ResponseEntity<Map<String, Object>> createPayment(@Valid @RequestBody CreateRequest request) {
         log.info("Internal createPayment - amount={}, userId={}, returnUrl={}", request.amount(), request.userId(), request.returnUrl());
         PaymentResponse response = paymentService.createVnPayPaymentInternal(
-                request.amount(), request.bankCode(), request.language(), request.userId(), request.returnUrl());
+                request.amount(), request.bankCode(), request.language(), request.userId(), request.returnUrl(), null);
         return ResponseEntity.ok(Map.of(
                 "code", response.getCode(),
                 "message", response.getMessage(),
