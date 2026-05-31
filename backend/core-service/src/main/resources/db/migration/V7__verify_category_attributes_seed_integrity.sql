@@ -1,25 +1,25 @@
-﻿-- -- Guardrail checks for new_data-aligned category attributes
--- DO $$
--- DECLARE
---     expected_count INT := 108;
---     actual_count INT;
---     missing_ref_count INT;
--- BEGIN
---     SELECT COUNT(*) INTO actual_count
---     FROM public.category_attributes
---     WHERE attribute_id IN ('at-0017', 'at-0018', 'at-0019', 'at-0020', 'at-0021', 'at-0022', 'at-0023', 'at-0024', 'at-0025', 'at-0026', 'at-0027', 'at-0028', 'at-0029', 'at-0030', 'at-0031', 'at-0032', 'at-0033', 'at-0034', 'at-0035', 'at-0036', 'at-0037', 'at-0038', 'at-0039', 'at-0040', 'at-0041', 'at-0042', 'at-0043', 'at-0044', 'at-0045', 'at-0046', 'at-0047', 'at-0048', 'at-0049', 'at-0050', 'at-0051', 'at-0052', 'at-0053', 'at-0054', 'at-0055', 'at-0056', 'at-0057', 'at-0058', 'at-0059', 'at-0060', 'at-0061', 'at-0062', 'at-0063', 'at-0064', 'at-0065', 'at-0066', 'at-0067', 'at-0068', 'at-0069', 'at-0070', 'at-0071', 'at-0072', 'at-0073', 'at-0074', 'at-0075', 'at-0076', 'at-0077', 'at-0078', 'at-0079', 'at-0080', 'at-0081', 'at-0082', 'at-0083', 'at-0084', 'at-0097', 'at-0098', 'at-0099', 'at-0100', 'at-0109', 'at-0110', 'at-0111', 'at-0112', 'at-0113', 'at-0114', 'at-0115', 'at-0116', 'at-0117', 'at-0118', 'at-0119', 'at-0120', 'at-0121', 'at-0122', 'at-0123', 'at-0124', 'at-0125', 'at-0126', 'at-0127', 'at-0128', 'at-0129', 'at-0130', 'at-0131', 'at-0132', 'at-0133', 'at-0134', 'at-0135', 'at-0136', 'at-0137', 'at-0138', 'at-0139', 'at-0140', 'at-0141', 'at-0142', 'at-0143', 'at-0144');
---
---     IF actual_count <> expected_count THEN
---         RAISE EXCEPTION 'category_attributes seed mismatch: expected % ids from new_data, found %', expected_count, actual_count;
---     END IF;
---
---     SELECT COUNT(*) INTO missing_ref_count
---     FROM public.item_attribute_values iav
---     LEFT JOIN public.category_attributes ca
---       ON ca.attribute_id = iav.attribute_id
---     WHERE ca.attribute_id IS NULL;
---
---     IF missing_ref_count > 0 THEN
---         RAISE EXCEPTION 'item_attribute_values has % rows referencing missing category_attributes', missing_ref_count;
---     END IF;
--- END $$;
+﻿-- Guardrail checks for new_data-aligned category attributes
+DO $$
+DECLARE
+    expected_count INT := 108;
+    actual_count INT;
+    missing_ref_count INT;
+BEGIN
+    SELECT COUNT(*) INTO actual_count
+    FROM public.category_attributes
+    WHERE attribute_id IN ('at-0017', 'at-0018', 'at-0019', 'at-0020', 'at-0021', 'at-0022', 'at-0023', 'at-0024', 'at-0025', 'at-0026', 'at-0027', 'at-0028', 'at-0029', 'at-0030', 'at-0031', 'at-0032', 'at-0033', 'at-0034', 'at-0035', 'at-0036', 'at-0037', 'at-0038', 'at-0039', 'at-0040', 'at-0041', 'at-0042', 'at-0043', 'at-0044', 'at-0045', 'at-0046', 'at-0047', 'at-0048', 'at-0049', 'at-0050', 'at-0051', 'at-0052', 'at-0053', 'at-0054', 'at-0055', 'at-0056', 'at-0057', 'at-0058', 'at-0059', 'at-0060', 'at-0061', 'at-0062', 'at-0063', 'at-0064', 'at-0065', 'at-0066', 'at-0067', 'at-0068', 'at-0069', 'at-0070', 'at-0071', 'at-0072', 'at-0073', 'at-0074', 'at-0075', 'at-0076', 'at-0077', 'at-0078', 'at-0079', 'at-0080', 'at-0081', 'at-0082', 'at-0083', 'at-0084', 'at-0097', 'at-0098', 'at-0099', 'at-0100', 'at-0109', 'at-0110', 'at-0111', 'at-0112', 'at-0113', 'at-0114', 'at-0115', 'at-0116', 'at-0117', 'at-0118', 'at-0119', 'at-0120', 'at-0121', 'at-0122', 'at-0123', 'at-0124', 'at-0125', 'at-0126', 'at-0127', 'at-0128', 'at-0129', 'at-0130', 'at-0131', 'at-0132', 'at-0133', 'at-0134', 'at-0135', 'at-0136', 'at-0137', 'at-0138', 'at-0139', 'at-0140', 'at-0141', 'at-0142', 'at-0143', 'at-0144');
+
+    IF actual_count <> expected_count THEN
+        RAISE EXCEPTION 'category_attributes seed mismatch: expected % ids from new_data, found %', expected_count, actual_count;
+    END IF;
+
+    SELECT COUNT(*) INTO missing_ref_count
+    FROM public.item_attribute_values iav
+    LEFT JOIN public.category_attributes ca
+      ON ca.attribute_id = iav.attribute_id
+    WHERE ca.attribute_id IS NULL;
+
+    IF missing_ref_count > 0 THEN
+        RAISE EXCEPTION 'item_attribute_values has % rows referencing missing category_attributes', missing_ref_count;
+    END IF;
+END $$;
