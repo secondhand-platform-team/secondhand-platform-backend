@@ -221,6 +221,9 @@ services:
       ADMIN_FRONTEND_BASE_URL: "http://localhost:3001"
       PUBLIC_API_BASE_URL: "http://localhost:8000"
       VNPAY_RETURN_URL: "http://localhost:8000/core/api/items/payment-callback"
+      WALLET_CALLBACK_URL: "http://localhost:8000/core/api/wallet/payment-callback"
+      ITEM_CALLBACK_URL: "http://localhost:8000/core/api/items/payment-callback"
+      ITEM_RENEW_CALLBACK_URL: "http://localhost:8000/core/api/items/payment-renew-callback"
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: admin

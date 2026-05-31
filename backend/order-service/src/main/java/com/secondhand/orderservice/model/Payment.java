@@ -22,6 +22,8 @@ public class Payment {
 
     private String transactionId;
 
+    private String vnpTxnRef;
+
     private Double amount;
 
     private String responseCode;

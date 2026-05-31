@@ -48,13 +48,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     public PaymentResponse createVnPayPayment(CreatePaymentRequest request, HttpServletRequest httpRequest) {
         try {
-            // Debug logging
-            log.info("=== DEBUG PaymentServiceImpl ===");
-            log.info("Amount: {}", request.getAmount());
-            log.info("BankCode: {}", request.getBankCode());
-            log.info("Language: {}", request.getLanguage());
-            log.info("UserId: {}", request.getUserId());
-            log.info("=== END DEBUG ===");
+            log.info("Creating VNPay payment: amount={}, userId={}", request.getAmount(), request.getUserId());
 
             String vnp_Version = "2.1.0";
             String vnp_Command = "pay";
@@ -77,7 +71,7 @@ public class PaymentServiceImpl implements PaymentService {
                 vnp_Params.put("vnp_BankCode", bankCode);
             }
             vnp_Params.put("vnp_TxnRef", vnp_TxnRef);
-            vnp_Params.put("vnp_OrderInfo", "Thanh toan don hang");
+            vnp_Params.put("vnp_OrderInfo", "Thanh toan don hang " + vnp_TxnRef);
             vnp_Params.put("vnp_OrderType", orderType);
 
             String locale = request.getLanguage();
@@ -95,35 +89,13 @@ public class PaymentServiceImpl implements PaymentService {
             formatter.setTimeZone(vnTimeZone);
             String vnp_CreateDate = formatter.format(cld.getTime());
             vnp_Params.put("vnp_CreateDate", vnp_CreateDate);
-            System.out.println("alo");
 
             cld.add(Calendar.MINUTE, 15);
             String vnp_ExpireDate = formatter.format(cld.getTime());
             vnp_Params.put("vnp_ExpireDate", vnp_ExpireDate);
 
-            List<String> fieldNames = new ArrayList<>(vnp_Params.keySet());
-            Collections.sort(fieldNames);
-            List<String> hashDataParts = new ArrayList<>();
-            List<String> queryParts = new ArrayList<>();
-
-            for (String fieldName : fieldNames) {
-                String fieldValue = vnp_Params.get(fieldName);
-
-                if (fieldValue != null && !fieldValue.isEmpty()) {
-                    String encodedFieldName = URLEncoder.encode(fieldName, StandardCharsets.US_ASCII.toString());
-                    String encodedFieldValue = URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString());
-                    hashDataParts.add(fieldName + "=" + encodedFieldValue);
-                    queryParts.add(encodedFieldName + "=" + encodedFieldValue);
-                }
-            }
-
-            String hashData = String.join("&", hashDataParts);
-            String queryUrl = String.join("&", queryParts);
-            String secureKeyToUse = secretKey != null ? secretKey.trim() : VnPayConfig.secretKey;
-            String vnp_SecureHash = VnPayConfig.hmacSHA512(secureKeyToUse, hashData);
-            queryUrl += "&vnp_SecureHashType=HmacSHA512&vnp_SecureHash=" + vnp_SecureHash;
-            String payUrlToUse = payUrl != null ? payUrl.trim() : VnPayConfig.vnp_PayUrl;
-            String paymentUrl = payUrlToUse + "?" + queryUrl;
+            // Build hash data and query string
+            String paymentUrl = buildVnPayUrl(vnp_Params);
 
             // Generate transaction ID
             String transactionId = "TXN-" + System.currentTimeMillis() + "-" + vnp_TxnRef;
@@ -132,6 +104,7 @@ public class PaymentServiceImpl implements PaymentService {
             Payment payment = new Payment();
             payment.setId(UUID.randomUUID().toString());
             payment.setTransactionId(transactionId);
+            payment.setVnpTxnRef(vnp_TxnRef);
             payment.setAmount((double) request.getAmount());
             payment.setMethod(PaymentMethod.VNPAY);
             payment.setStatus(PaymentStatus.PENDING);
@@ -140,20 +113,16 @@ public class PaymentServiceImpl implements PaymentService {
 
             return new PaymentResponse("00", "success", paymentUrl, transactionId);
         } catch (Exception e) {
+            log.error("Error creating VNPay payment", e);
             return new PaymentResponse("99", "error: " + e.getMessage(), null, null);
         }
     }
 
     @Override
     public PaymentResponse createVnPayPaymentInternal(Long amount, String bankCode, String language, String userId, String customReturnUrl, String orderId) {
-        CreatePaymentRequest request = new CreatePaymentRequest();
-        request.setAmount(amount);
-        request.setBankCode(bankCode);
-        request.setLanguage(language != null ? language : "vn");
-        request.setUserId(userId);
-        String ipAddr = "0.0.0.0";
-
         try {
+            log.info("Creating VNPay payment (internal): amount={}, userId={}, orderId={}", amount, userId, orderId);
+
             String vnp_Version = "2.1.0";
             String vnp_Command = "pay";
             String orderType = "other";
@@ -172,12 +141,14 @@ public class PaymentServiceImpl implements PaymentService {
                 vnp_Params.put("vnp_BankCode", bankCode);
             }
             vnp_Params.put("vnp_TxnRef", vnp_TxnRef);
-            vnp_Params.put("vnp_OrderInfo", "Thanh toan don hang");
+            // Include orderId in OrderInfo so callback can identify the order
+            String orderInfo = orderId != null ? "Thanh toan don hang " + orderId : "Thanh toan don hang " + vnp_TxnRef;
+            vnp_Params.put("vnp_OrderInfo", orderInfo);
             vnp_Params.put("vnp_OrderType", orderType);
             vnp_Params.put("vnp_Locale", language != null && !language.isEmpty() ? language : "vn");
             String finalReturnUrl = customReturnUrl != null && !customReturnUrl.isEmpty() ? customReturnUrl : (this.returnUrl != null ? this.returnUrl.trim() : VnPayConfig.vnp_ReturnUrl);
             vnp_Params.put("vnp_ReturnUrl", finalReturnUrl);
-            vnp_Params.put("vnp_IpAddr", ipAddr);
+            vnp_Params.put("vnp_IpAddr", "0.0.0.0");
 
             TimeZone vnTimeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh");
             Calendar cld = Calendar.getInstance(vnTimeZone);
@@ -187,32 +158,15 @@ public class PaymentServiceImpl implements PaymentService {
             cld.add(Calendar.MINUTE, 15);
             vnp_Params.put("vnp_ExpireDate", formatter.format(cld.getTime()));
 
-            List<String> fieldNames = new ArrayList<>(vnp_Params.keySet());
-            Collections.sort(fieldNames);
-            List<String> hashDataParts = new ArrayList<>();
-            List<String> queryParts = new ArrayList<>();
-
-            for (String fieldName : fieldNames) {
-                String fieldValue = vnp_Params.get(fieldName);
-                if (fieldValue != null && !fieldValue.isEmpty()) {
-                    hashDataParts.add(fieldName + "=" + URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
-                    queryParts.add(URLEncoder.encode(fieldName, StandardCharsets.US_ASCII.toString()) + "=" + URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
-                }
-            }
-
-            String hashData = String.join("&", hashDataParts);
-            String queryUrl = String.join("&", queryParts);
-            String secureKeyToUse = secretKey != null ? secretKey.trim() : VnPayConfig.secretKey;
-            String vnp_SecureHash = VnPayConfig.hmacSHA512(secureKeyToUse, hashData);
-            queryUrl += "&vnp_SecureHashType=HmacSHA512&vnp_SecureHash=" + vnp_SecureHash;
-            String payUrlToUse = payUrl != null ? payUrl.trim() : VnPayConfig.vnp_PayUrl;
-            String paymentUrl = payUrlToUse + "?" + queryUrl;
+            // Build hash data and query string
+            String paymentUrl = buildVnPayUrl(vnp_Params);
 
             String transactionId = "TXN-" + System.currentTimeMillis() + "-" + vnp_TxnRef;
 
             Payment payment = new Payment();
             payment.setId(UUID.randomUUID().toString());
             payment.setTransactionId(transactionId);
+            payment.setVnpTxnRef(vnp_TxnRef);
             payment.setAmount((double) amount);
             payment.setMethod(PaymentMethod.VNPAY);
             payment.setStatus(PaymentStatus.PENDING);
@@ -226,6 +180,7 @@ public class PaymentServiceImpl implements PaymentService {
 
             return new PaymentResponse("00", "success", paymentUrl, transactionId);
         } catch (Exception e) {
+            log.error("Error creating VNPay payment (internal)", e);
             return new PaymentResponse("99", "error: " + e.getMessage(), null, null);
         }
     }
@@ -270,6 +225,8 @@ public class PaymentServiceImpl implements PaymentService {
                 }
             }
 
+            // VNPay returns params already URL-decoded via HttpServletRequest.getParameter()
+            // We must re-encode them to match the hash data format used when creating the URL
             List<String> fieldNames = new ArrayList<>(fields.keySet());
             Collections.sort(fieldNames);
             StringBuilder sb = new StringBuilder();
@@ -290,7 +247,6 @@ public class PaymentServiceImpl implements PaymentService {
             String secureKeyToUse = secretKey != null ? secretKey.trim() : VnPayConfig.secretKey;
             String vnp_SecureHashCheck = VnPayConfig.hmacSHA512(secureKeyToUse, sb.toString());
 
-            log.info("verifyVnPayCallback - String to hash: {}", sb.toString());
             log.info("verifyVnPayCallback - Calculated Hash: {}, VNPay Hash: {}", vnp_SecureHashCheck, vnp_SecureHash);
 
             return vnp_SecureHashCheck.equalsIgnoreCase(vnp_SecureHash);
@@ -366,6 +322,46 @@ public class PaymentServiceImpl implements PaymentService {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Payment not found with id: " + id));
         return mapToAdminPaymentResponse(payment);
+    }
+
+    /**
+     * Build VNPay payment URL from params.
+     * Hash data and query string both use URL-encoded values (matching VNPay official SDK).
+     */
+    private String buildVnPayUrl(Map<String, String> vnp_Params) {
+        try {
+            List<String> fieldNames = new ArrayList<>(vnp_Params.keySet());
+            Collections.sort(fieldNames);
+            StringBuilder hashData = new StringBuilder();
+            StringBuilder query = new StringBuilder();
+
+            Iterator<String> itr = fieldNames.iterator();
+            while (itr.hasNext()) {
+                String fieldName = itr.next();
+                String fieldValue = vnp_Params.get(fieldName);
+                if (fieldValue != null && !fieldValue.isEmpty()) {
+                    String encodedValue = URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString());
+                    // Hash data: fieldName=encodedValue (VNPay official SDK)
+                    hashData.append(fieldName).append("=").append(encodedValue);
+                    // Query string: same encoding
+                    query.append(URLEncoder.encode(fieldName, StandardCharsets.US_ASCII.toString()))
+                         .append("=").append(encodedValue);
+                }
+                if (itr.hasNext()) {
+                    hashData.append("&");
+                    query.append("&");
+                }
+            }
+
+            String secureKeyToUse = secretKey != null ? secretKey.trim() : VnPayConfig.secretKey;
+            String vnp_SecureHash = VnPayConfig.hmacSHA512(secureKeyToUse, hashData.toString());
+            query.append("&vnp_SecureHashType=HmacSHA512&vnp_SecureHash=").append(vnp_SecureHash);
+
+            String payUrlToUse = payUrl != null ? payUrl.trim() : VnPayConfig.vnp_PayUrl;
+            return payUrlToUse + "?" + query.toString();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to build VNPay URL", e);
+        }
     }
 }
 

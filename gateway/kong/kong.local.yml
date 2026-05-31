@@ -16,81 +16,26 @@ plugins:
 upstreams:
   - name: auth-upstream
     algorithm: round-robin
-    healthchecks:
-      active:
-        http_path: /api/login/user
-        healthy:
-          interval: 10
-          successes: 1
-        unhealthy:
-          interval: 5
-          http_failures: 3
-          tcp_failures: 3
-          timeouts: 3
     targets:
       - target: auth-service:8081
         weight: 100
   - name: core-upstream
     algorithm: round-robin
-    healthchecks:
-      active:
-        http_path: /actuator/health
-        healthy:
-          interval: 10
-          successes: 1
-        unhealthy:
-          interval: 5
-          http_failures: 3
-          tcp_failures: 3
-          timeouts: 3
     targets:
       - target: core-service:8082
         weight: 100
   - name: order-upstream
     algorithm: round-robin
-    healthchecks:
-      active:
-        http_path: /actuator/health
-        healthy:
-          interval: 10
-          successes: 1
-        unhealthy:
-          interval: 5
-          http_failures: 3
-          tcp_failures: 3
-          timeouts: 3
     targets:
       - target: order-service:8083
         weight: 100
   - name: chat-upstream
     algorithm: round-robin
-    healthchecks:
-      active:
-        http_path: /actuator/health
-        healthy:
-          interval: 10
-          successes: 1
-        unhealthy:
-          interval: 5
-          http_failures: 3
-          tcp_failures: 3
-          timeouts: 3
     targets:
       - target: chat-service:8084
         weight: 100
   - name: ai-upstream
     algorithm: round-robin
-    healthchecks:
-      active:
-        http_path: /actuator/health
-        healthy:
-          interval: 10
-          successes: 1
-        unhealthy:
-          interval: 5
-          http_failures: 3
-          tcp_failures: 3
-          timeouts: 3
     targets:
       - target: ai-service:8085
         weight: 100
@@ -100,10 +45,10 @@ services:
     host: auth-upstream
     protocol: http
     port: 80
-    retries: 2
-    connect_timeout: 5000
-    write_timeout: 10000
-    read_timeout: 10000
+    retries: 5
+    connect_timeout: 30000
+    write_timeout: 30000
+    read_timeout: 30000
     routes:
       - name: auth-route
         paths: [/auth]
@@ -121,8 +66,8 @@ services:
     host: core-upstream
     protocol: http
     port: 80
-    retries: 2
-    connect_timeout: 5000
+    retries: 5
+    connect_timeout: 30000
     write_timeout: 30000
     read_timeout: 30000
     routes:
@@ -142,8 +87,8 @@ services:
     host: order-upstream
     protocol: http
     port: 80
-    retries: 1
-    connect_timeout: 5000
+    retries: 5
+    connect_timeout: 30000
     write_timeout: 30000
     read_timeout: 30000
     routes:
@@ -163,8 +108,8 @@ services:
     host: chat-upstream
     protocol: http
     port: 80
-    retries: 1
-    connect_timeout: 5000
+    retries: 5
+    connect_timeout: 30000
     write_timeout: 60000
     read_timeout: 60000
     routes:
@@ -185,8 +130,8 @@ services:
     host: ai-upstream
     protocol: http
     port: 80
-    retries: 1
-    connect_timeout: 5000
+    retries: 5
+    connect_timeout: 30000
     write_timeout: 60000
     read_timeout: 60000
     routes:
