@@ -50,6 +50,8 @@ public class SecurityConfig {
                                 "/api/register/**",
                                 "/api/refresh",
                                 "/api/logout",
+                                "/api/forgot-password",
+                                "/api/reset-password",
                                 "/api/users/*/free-sell-use/decrease"
                         ).permitAll()
                         .anyRequest().authenticated()

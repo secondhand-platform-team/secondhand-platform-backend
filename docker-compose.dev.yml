@@ -165,6 +165,11 @@ services:
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: admin
       SPRING_RABBITMQ_PASSWORD: admin123
+      SPRING_REDIS_HOST: ktpm-redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_MAIL_HOST: smtp.gmail.com
+      SPRING_MAIL_PORT: 587
+      JWT_EXPIRATION_MS: 604800000
     develop:
       watch:
         - action: sync+restart
@@ -174,6 +179,8 @@ services:
           path: ./backend/auth-service/pom.xml
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       chat-service:
         condition: service_started

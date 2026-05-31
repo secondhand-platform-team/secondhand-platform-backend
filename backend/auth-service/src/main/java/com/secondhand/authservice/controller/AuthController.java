@@ -4,6 +4,8 @@ import com.secondhand.authservice.dto.request.LoginRequest;
 import com.secondhand.authservice.dto.request.RegisterRequest;
 import com.secondhand.authservice.dto.request.UpdateProfileRequest;
 import com.secondhand.authservice.dto.request.ChangePasswordRequest;
+import com.secondhand.authservice.dto.request.ForgotPasswordRequest;
+import com.secondhand.authservice.dto.request.ResetPasswordRequest;
 import com.secondhand.authservice.dto.response.AuthResponse;
 import com.secondhand.authservice.dto.response.LoginResponse;
 import com.secondhand.authservice.dto.response.MessageResponse;
@@ -16,6 +18,7 @@ import com.secondhand.authservice.model.enums.Role;
 import com.secondhand.authservice.repository.UserRepository;
 import com.secondhand.authservice.security.AuthUserDetailsService;
 import com.secondhand.authservice.service.AuthService;
+import com.secondhand.authservice.service.PasswordResetService;
 import com.secondhand.authservice.service.RefreshTokenService;
 import com.secondhand.authservice.service.UserService;
 import com.secondhand.authservice.utils.AuthCookieUtils;
@@ -47,6 +50,7 @@ public class AuthController {
     private final JwtUtils jwtUtils;
     private final AuthUserDetailsService userDetailsService;
     private final UserRepository userRepository;
+    private final PasswordResetService passwordResetService;
 
     // ── Login ─────────────────────────────────────────────────────────────────
 
@@ -298,6 +302,23 @@ public class AuthController {
                     .body(java.util.Map.of("error", e.getClass().getSimpleName(), "message",
                             e.getMessage() != null ? e.getMessage() : "Unknown error"));
         }
+    }
+
+    // ── Password Reset (Forgot Password) ─────────────────────────────────────
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<MessageResponse> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request) {
+        passwordResetService.sendResetOtp(request.getEmail());
+        return ResponseEntity.ok(MessageResponse.success("Mã OTP đã được gửi đến email của bạn."));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<MessageResponse> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request) {
+        passwordResetService.verifyOtpAndResetPassword(
+                request.getEmail(), request.getOtp(), request.getNewPassword());
+        return ResponseEntity.ok(MessageResponse.success("Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại."));
     }
 
     // ── Free-sell Usage ───────────────────────────────────────────────────────

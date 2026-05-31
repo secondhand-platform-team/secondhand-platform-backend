@@ -17,62 +17,77 @@ upstreams:
   - name: auth-upstream
     algorithm: round-robin
     healthchecks:
-      passive:
+      active:
+        http_path: /api/login/user
         healthy:
+          interval: 10
           successes: 1
         unhealthy:
+          interval: 5
           http_failures: 3
           tcp_failures: 3
           timeouts: 3
     targets:
-      - target: host.docker.internal:8081
+      - target: auth-service:8081
         weight: 100
   - name: core-upstream
     algorithm: round-robin
     healthchecks:
-      passive:
+      active:
+        http_path: /actuator/health
         healthy:
+          interval: 10
           successes: 1
         unhealthy:
+          interval: 5
           http_failures: 3
           tcp_failures: 3
           timeouts: 3
     targets:
-      - target: host.docker.internal:8082
+      - target: core-service:8082
         weight: 100
   - name: order-upstream
     algorithm: round-robin
     healthchecks:
-      passive:
+      active:
+        http_path: /actuator/health
         healthy:
+          interval: 10
           successes: 1
         unhealthy:
+          interval: 5
           http_failures: 3
           tcp_failures: 3
           timeouts: 3
     targets:
-      - target: host.docker.internal:8083
+      - target: order-service:8083
         weight: 100
   - name: chat-upstream
     algorithm: round-robin
     healthchecks:
-      passive:
+      active:
+        http_path: /actuator/health
         healthy:
+          interval: 10
           successes: 1
         unhealthy:
+          interval: 5
           http_failures: 3
           tcp_failures: 3
           timeouts: 3
     targets:
-      - target: host.docker.internal:8084
+      - target: chat-service:8084
         weight: 100
   - name: ai-upstream
     algorithm: round-robin
     healthchecks:
-      passive:
+      active:
+        http_path: /actuator/health
         healthy:
+          interval: 10
           successes: 1
         unhealthy:
+          interval: 5
           http_failures: 3
           tcp_failures: 3
           timeouts: 3
